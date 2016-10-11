@@ -151,8 +151,17 @@ def genotypeSample(sample, bamFile, config):
 	'''
 	return None
 
-def waitForSamples(sampleSet):
-	return None
+def waitForSamples(sampleSet, config):
+	allOk = True
+	
+	if config.cluster == "local":
+		for sampleIndex in range(len(sampleSet)):
+			sample = sampleSet[sampleIndex]
+			if sample['jobId'] != 0:
+				print "Error genotyping {}".format(sample['name'])
+				allOk = False
+
+	return allOk
 	
 def genotypeSamples(sampleSet, config):
 	for sampleIndex in range(len(sampleSet)):
@@ -193,10 +202,12 @@ def main(argv = None):
 
 	genotypeSamples(sampleSet1, config)
 	genotypeSamples(sampleSet2, config)
+
+	if waitForSamples(sampleSet1, config) == False or waitForSamples(sampleSet2, config) == False:
+		print "Encountered failed samples, stopping here."
+		return
+
 '''
-	waitForSamples(sampleSet1)
-	waitForSamples(sampleSet2)
-	
 	compareSamples(sampleSet1, sampleSet2, args.cache_dir, args.results_dir)
 	
 	if len(sampleSet1) == len(sampleSet2):
