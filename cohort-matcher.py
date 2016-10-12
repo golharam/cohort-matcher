@@ -56,7 +56,8 @@ def parseArgs(argv = None):
 							choices=('local', 'sge'),
 							help="Specify type of cluster architecture to use (Default: local)")
 	
-
+	parser_grp7 = parser.add_argument_group("Miscellaneous")
+	parser_grp7.add_argument("--aws-path", required=False, help="Specify path to aws cli")
 	'''
 	# Freebayes options
 	parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
@@ -92,6 +93,7 @@ def parseArgs(argv = None):
 		print "Reference: {}".format(args.reference)
 		print ""
 		print "Cluster Type: {}".format(args.cluster)
+		print "AWS Path: {}".format(args.aws_path)
 		print ""
 		print "Working in " + os.getcwd()
 		
@@ -239,51 +241,97 @@ def VCFtoTSV(invcf, outtsv, caller):
     fout.close()
     return var_ct
 
+def downloadFileFromAmazon(srcFile, destDirectory, config):
+	if len(config.aws_path) == 0:
+		print "AWS Path not set"
+		exit(1)
+
+	cmd = [config.aws_path, "s3", "cp", srcFile, destDirectory]
+	if config.verbose:
+		print "Downloading file: {}".format(srcFile)
+	p = subprocess.Popen(cmd)
+	p.wait()
+	if p.returncode != 0:
+		print "Error downloading file".format(cmd)
+		return None
+	
+	localFile = os.path.join(destDirectory, os.path.basename(srcFile))
+	if os.access(localFile, os.R_OK) == False:
+		print "{} is not accessible.".format(localFile)
+		return None
+	 
+	return localFile 
+	
 def genotypeSample(sample, bamFile, intervalsFile, config):
 	if config.verbose:
-		print "Genotyping {}: {}".format(sample, bamFile)
+		print "Genotyping {}".format(sample)
+
+	deleteBam = False
+	if bamFile.startswith("s3://"):
+		localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
+		if os.path.exists(localBamFile):
+			print "Using cached bam file: {}".format(localBamFile)
+		else:
+			downloadFileFromAmazon(bamFile, config.scratch_dir, config)
+		deleteBam = True
 		
-	''' Make sure BAM file is accessible '''
-	if os.access(bamFile, os.R_OK) == False:
-		print "{} is not accessible.".format(bamFile)
-		exit(1)
-		
-	''' Make sure BAM file is indexed '''
-	bam_index2 = bamFile.rstrip(".bam") + ".bai"
-	bam_index1 = bamFile + ".bai"
-	if (os.access(bam_index1, os.R_OK) == False and
-		os.access(bam_index2, os.R_OK) == False):
-		print "BAM file (%s) is either missing index or the index file is not readable." % bamFile
-		exit(1)
-	
+		''' Try to download index '''
+		bamIndex = bamFile.rstrip(".bam") + ".bai"
+		localBamIndex = os.path.join(config.scratch_dir, os.path.basename(bamIndex))
+		if os.path.exists(localBamIndex) == False:
+			if downloadFileFromAmazon(bamIndex, config.scratch_dir, config) == None:
+				''' Try to download index 2 '''
+				bamIndex = bamFile + ".bai"
+				localBamIndex = os.path.join(config.scratch_dir, os.path.basename(bamIndex))
+				if os.path.exists(localBamIndex) == False:
+					if downloadFileFromAmazon(bamIndex, config.scratch_dir, config) == None:
+						print "Could not find matching bam index.  Generating."
+						if len(config.samtools_path) == 0:
+							print "samtools path not specified"
+							exit(1)
+						cmd = [config.samtools_path, 'index', localBamFile]
+						p = subprocess.Popen(cmd)
+						p.wait()
+						if p.returncode != 0:
+							print "Unable to generated BAM index"
+							exit(1)
+	else:
+		localBamFile = bamFile
+
 	''' TODO: Make sure BAM header and reference have matching chromosome names '''
-	
 	''' TODO: Make sure the VCF file and the BAM file have matching chromosome names '''
 	
 	outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
 	if os.path.exists(outputVcf) == False:
 		if config.caller == 'freebayes':
+			if config.verbose:
+				print "Calling freebayes"
 			cmd = [config.freebayes_path, "--fasta-reference", config.reference, "--targets", intervalsFile, "--no-indels",
 				"--min-coverage", str(config.dp_threshold), "--report-all-haplotype-alleles", "--report-monomorphic", 
-				"--vcf", outputVcf, bamFile]
+				"--vcf", outputVcf, localBamFile]
 		
 			p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 			out, err = p.communicate()
 			p.wait()
-				
 			if p.returncode != 0:
 				print "Error executing {}".format(cmd)
 				print err
+				os.remove(outputVcf)
 				return p.returncode
-			
 			if os.path.exists(outputVcf) == False:
 				print "Output VCF file, {}, could not be found in cache.".format(outputVcf)
 				return p.returncode
-		
+
 	''' Convert the vcf to tsv '''
+	if config.verbose:
+		print "Convert VCF to TSV"
 	out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
 	if os.path.exists(out_tsv) == False:
 		VCFtoTSV(outputVcf, out_tsv, config.caller)
+
+	if deleteBam == True:
+		os.remove(localBamFile)	
+		os.remove(localBamIndex)
 	return None
 	
 def genotypeSamples(sampleSet, intervalsFile, config):
@@ -292,26 +340,70 @@ def genotypeSamples(sampleSet, intervalsFile, config):
 		tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
 		if os.path.exists(tsvFile) == False:
 			if config.cluster == "local":
-				genotypeSample(sample["name"], os.path.abspath(sample["bam"]), intervalsFile, config)
+				if sample["bam"].startswith("s3://"):
+					genotypeSample(sample["name"], sample["bam"], intervalsFile, config)
+				else:
+					genotypeSample(sample["name"], os.path.abspath(sample["bam"]), intervalsFile, config)
 
-def compareSamples(sampleSet1, sampleSet2, cache_dir, results_dir):
-	compareJobs = []
-	for sampleIndex in range(len(sampleSet1)):
-		sample1 = sampleSet1[sampleIndex]
-		sample2 = sampleSet2[sampleIndex]
-		result = os.path.join(results_dir, sample1) + "-" + os.path.join(results_dir, sample2)
-		if os.path.exist(result) == False:
-			compareJobs.append(compareGenotypes(sample1, sample2))
-
-	waitForCompareJobs(compareJobs)
-	
-	for sampleIndex in range(len(sampleSet1)):
-		sample1 = sampleSet1[sampleIndex]
-		sample2 = sampleSet2[sampleIndex]
-		result = os.path.join(results_dir, sample1) + "-" + os.path.join(results_dir, sample2)
-		pctIdentity = getCompareResult(result)
-		print sample1 + "\t" + sample2 + "\t" + pctIdentity
-		
+def compareSamples(sampleSet1, sampleSet2, config):
+	for sample1 in sampleSet1:
+		for sample2 in sampleSet2:
+			var_list = {}
+			tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
+			with open(tsv1, "r") as fin:
+				for line in fin:	
+				    if line.startswith("CHROM\t"):
+				        continue
+				    bits = line.strip("\n").split("\t")
+				    if bits[5] == "NA":
+				        continue
+				    elif int(bits[5]) < DP_THRESH:
+				        continue
+				    else:
+				        # add variants to list
+				        var_list["\t".join(bits[:2])] = 1
+			
+			# then parse second tsv file to get list of variants that passed in both bams
+			tsv2 = os.path.join(config.cache_dir, sample2["name"] + ".tsv")
+			with open(tsv2, "r") as fin:
+				for line in fin:
+				    if line.startswith("CHROM\t"):
+				        continue
+				    bits = line.strip("\n").split("\t")
+				    var_ = "\t".join(bits[:2])
+				
+				    if var_ in var_list:
+				        var_list[var_] = 2
+			
+			#-------------------------------------------------------------------------------
+			# write out bam1 variants
+			bam1_var = os.path.join(config.scratch_dir, sample1["name"] + ".variants") 
+			with open(bam1_var, "w") as fout:
+				with open(tsv1, "r") as fin: 
+					for line in fin:
+					    if line.startswith("CHROM\t"):
+					        continue
+					    bits = line.strip("\n").split("\t")
+					    out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2], bits[3], bits[7])
+					    var_ = "\t".join(bits[:2])
+					    if var_ in var_list:
+					        if var_list[var_] == 2:
+					            fout.write(out_line)
+			
+			#-------------------------------------------------------------------------------
+			# write out bam2 variants
+			bam2_var = os.path.join(config.scratch_dir, sample2["name"] + ".variants") 
+			with open(bam2_var, "w") as fout:
+				with open(tsv2, "r") as fin: 
+					for line in fin:
+					    if line.startswith("CHROM\t"):
+					        continue
+					    bits = line.strip("\n").split("\t")
+					    out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2], bits[3], bits[7])
+					    var_ = "\t".join(bits[:2])
+					    if var_ in var_list:
+					        if var_list[var_] == 2:
+					            fout.write(out_line)
 def main(argv = None):
 	config = parseArgs(argv)
 	checkConfig(config)
@@ -327,7 +419,7 @@ def main(argv = None):
 	genotypeSamples(sampleSet1, intervalsFile, config)
 	genotypeSamples(sampleSet2, intervalsFile, config)
 
-	compareSamples(sampleSet1, sampleSet2, args.cache_dir, args.results_dir)
+	compareSamples(sampleSet1, sampleSet2, config)
 	
 if __name__ == "__main__":
 	sys.exit(main())
