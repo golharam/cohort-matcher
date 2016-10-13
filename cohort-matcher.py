@@ -2,6 +2,7 @@
 import argparse
 import ConfigParser
 import os
+import pysam
 import subprocess
 import sys
 import vcf
@@ -113,7 +114,11 @@ def checkConfig(config):
 		exit(1)
 
 	if os.path.exists(config.reference) == False:
-		print "Reference FASTQ file (%s) is not accessible" % config.reference
+		print "Reference FASTA file (%s) is not accessible" % config.reference
+		exit(1)
+	reference_index = config.reference + ".fai"
+	if os.path.exists(reference_index) == False:
+		print "Reference FASTA file (%s) is not indexed" % reference_index
 		exit(1)
 
 def readSamples(sampleSheetFile, verbose):
@@ -262,7 +267,26 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
 	 
 	return localFile 
 	
-def genotypeSample(sample, bamFile, intervalsFile, config):
+# Get list of chromosome names from the BAM file
+def get_chrom_names_from_BAM(bam_file):
+    chrom_list = []
+    inbam = pysam.AlignmentFile(bam_file, "rb")
+    header_sq = inbam.header["SQ"]
+    for sq_ in header_sq:
+        chrom_list.append(sq_["SN"])
+    return chrom_list
+
+def get_chrom_names_from_REF(ref_fasta):
+	ref_idx = ref_fasta + ".fai"
+	chrom_list = []
+	fin = open(ref_idx, "r")
+	for line in fin:
+		if line.strip() == "":
+			continue
+		chrom_list.append(line.strip().split()[0])
+	return chrom_list
+
+def genotypeSample(sample, bamFile, config):
 	if config.verbose:
 		print "Genotyping {}".format(sample)
 
@@ -275,31 +299,59 @@ def genotypeSample(sample, bamFile, intervalsFile, config):
 			downloadFileFromAmazon(bamFile, config.scratch_dir, config)
 		deleteBam = True
 		
-		''' Try to download index '''
-		bamIndex = bamFile.rstrip(".bam") + ".bai"
-		localBamIndex = os.path.join(config.scratch_dir, os.path.basename(bamIndex))
-		if os.path.exists(localBamIndex) == False:
-			if downloadFileFromAmazon(bamIndex, config.scratch_dir, config) == None:
+		''' If the index is already downloaded, use it '''
+		localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
+		localBamIndex2 = localBamFile + ".bai"
+		localBamIndex = ''
+	
+		if os.path.exists(localBamIndex1):
+			localBamIndex = localBamIndex1
+		elif os.path.exists(localBamIndex2):
+			localBamIndex = localBamIndex2
+		else:
+			''' Else, try to download index '''
+			bamIndex1 = bamFile.rstrip(".bam") + ".bai"
+			if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
+				localBamIndex = localBamIndex1
+			else:
 				''' Try to download index 2 '''
-				bamIndex = bamFile + ".bai"
-				localBamIndex = os.path.join(config.scratch_dir, os.path.basename(bamIndex))
-				if os.path.exists(localBamIndex) == False:
-					if downloadFileFromAmazon(bamIndex, config.scratch_dir, config) == None:
-						print "Could not find matching bam index.  Generating."
-						if len(config.samtools_path) == 0:
-							print "samtools path not specified"
-							exit(1)
-						cmd = [config.samtools_path, 'index', localBamFile]
-						p = subprocess.Popen(cmd)
-						p.wait()
-						if p.returncode != 0:
-							print "Unable to generated BAM index"
-							exit(1)
+				if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
+					localBamIndex = localBamIndex2
+				else:
+					print "Could not find matching bam index.  Generating."
+					if len(config.samtools_path) == 0:
+						print "samtools path not specified"
+						exit(1)
+					cmd = [config.samtools_path, 'index', localBamFile]
+					p = subprocess.Popen(cmd)
+					p.wait()
+					if p.returncode != 0:
+						print "Unable to generated BAM index"
+						exit(1)
 	else:
 		localBamFile = bamFile
 
 	''' TODO: Make sure BAM header and reference have matching chromosome names '''
+	if config.verbose:
+		print "Checking reference"
+	bam_chroms = get_chrom_names_from_BAM(localBamFile)
+	REF_CHROMS = get_chrom_names_from_REF(config.reference)
+	bamREF_diff = set(bam_chroms).difference(set(REF_CHROMS))
+	if len(bamREF_diff) >= (len(REF_CHROMS) / 2):
+		print "Sample {} contains chromosomes not in reference {}:".format(sample, config.reference)
+		for chr in bamREF_diff:
+			print chr
+		exit(1)
+		
 	''' TODO: Make sure the VCF file and the BAM file have matching chromosome names '''
+	#vcf_read = vcf.Reader(open(config.vcf, "r"))
+	#vcf_chroms = vcf_read.metadata['contig']
+	
+	# Make the intervals file for the BAM file and matching reference
+	intervalsFile = os.path.join(config.scratch_dir, sample +".intervals")
+	if config.verbose:
+		print "Generating intervals file: " + intervalsFile
+	vcfToIntervals(config.vcf, intervalsFile)
 	
 	outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
 	if os.path.exists(outputVcf) == False:
@@ -334,16 +386,16 @@ def genotypeSample(sample, bamFile, intervalsFile, config):
 		os.remove(localBamIndex)
 	return None
 	
-def genotypeSamples(sampleSet, intervalsFile, config):
+def genotypeSamples(sampleSet, config):
 	for sampleIndex in range(len(sampleSet)):
 		sample = sampleSet[sampleIndex]
 		tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
 		if os.path.exists(tsvFile) == False:
 			if config.cluster == "local":
 				if sample["bam"].startswith("s3://"):
-					genotypeSample(sample["name"], sample["bam"], intervalsFile, config)
+					genotypeSample(sample["name"], sample["bam"], config)
 				else:
-					genotypeSample(sample["name"], os.path.abspath(sample["bam"]), intervalsFile, config)
+					genotypeSample(sample["name"], os.path.abspath(sample["bam"]), config)
 
 def compareSamples(sampleSet1, sampleSet2, config):
 	for sample1 in sampleSet1:
@@ -411,13 +463,8 @@ def main(argv = None):
 	sampleSet1 = readSamples(config.set1, config.verbose)
 	sampleSet2 = readSamples(config.set2, config.verbose)
 
-	intervalsFile = os.path.join(config.scratch_dir, "genotype.intervals")
-	if config.verbose:
-		print "Generating intervals file: " + intervalsFile
-	vcfToIntervals(config.vcf, intervalsFile)
-
-	genotypeSamples(sampleSet1, intervalsFile, config)
-	genotypeSamples(sampleSet2, intervalsFile, config)
+	genotypeSamples(sampleSet1, config)
+	genotypeSamples(sampleSet2, config)
 
 	compareSamples(sampleSet1, sampleSet2, config)
 	
