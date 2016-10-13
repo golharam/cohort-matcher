@@ -277,16 +277,31 @@ def VCFtoTSV(invcf, outtsv, caller):
     fout.close()
     return var_ct
 
+def isFileInAmazon(srcFile, config):
+	cmd = [config.aws_path, "s3", "ls", srcFile]
+	p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	out, err = p.communicate()
+	p.wait()
+	lines = out.splitlines()
+	for line in lines:
+		fields = line.split()
+		if fields[3] == os.path.basename(srcFile):
+			return True
+	return False
+	
 def downloadFileFromAmazon(srcFile, destDirectory, config):
 	if len(config.aws_path) == 0:
 		print "AWS Path not set"
 		exit(1)
 
+	if isFileInAmazon(srcFile, config) == False:
+		print "File (%s) is not accessible" % srcFile
+		return None
+		
 	cmd = [config.aws_path, "s3", "cp", srcFile, destDirectory]
 	if config.verbose:
 		print "Downloading file: {}".format(srcFile)
-	p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	out, err = p.communicate()
+	p = subprocess.Popen(cmd)
 	p.wait()
 	if p.returncode != 0:
 		print "Error downloading file {}".format(srcFile)
