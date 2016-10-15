@@ -556,6 +556,9 @@ def is_subset(hom_gt, het_gt):
         return False
 
 def compareSamples(sampleSet1, sampleSet2, config):
+	A_BIT_LOW = """the number of comparable genomic loci is a bit low.
+Try using a different variants list (--VCF) file which have more appropriate genomic positions for comparison."""
+
 	if config.chromosome_map:
 		default_chroms, alternate_chroms, def_to_alt, alt_to_def = get_chrom_data_from_map(config.chromosome_map)
 	else:
@@ -823,7 +826,8 @@ CONCLUSION:
 		for sample2 in sampleSet2:
 			fout.write(sample2["name"])
 			for sample1 in sampleSet1:
-				fout.write("\t" + matrix[sample1["name"]][sample2["name"]])
+				s = '%.4f' % matrix[sample1["name"]][sample2["name"]]
+				fout.write("\t" + s)
 			fout.write("\n")
 			
 def main(argv = None):
