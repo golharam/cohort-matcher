@@ -1,3 +1,4 @@
+#!/bin/env python
 import argparse
 import ConfigParser
 import json
@@ -8,19 +9,15 @@ import sys
 import vcf
 from fisher import pvalue
 
-def parseArgs(argv = None):
-	# Do argv default this way, as doing it in the functional
-	# declaration sets it at compile time.
-	if argv is None:
-		argv = sys.argv[1:]
-	
+def getArgParser(genotyping = False):
 	parser = argparse.ArgumentParser(description="Compare two vcf files to see if \
 	they are from the same samples, using frequently occuring SNPs \
 	reported in the 1000Genome database")
 
 	parser_grp1 = parser.add_argument_group("Required")
-	parser_grp1.add_argument("--set1", "-S1", required=True, help="First set of samples")
-	parser_grp1.add_argument("--set2", "-S2", required=True, help="Second set of samples")
+	if genotyping == False:
+		parser_grp1.add_argument("--set1", "-S1", required=True, help="First set of samples")
+		parser_grp1.add_argument("--set2", "-S2", required=True, help="Second set of samples")
 
 	parser_grp2 = parser.add_argument_group("Configuration")
 	parser_grp2.add_argument("--cache-dir", "-CD", required=False,
@@ -65,7 +62,7 @@ def parseArgs(argv = None):
 							help="Specify type of cluster architecture to use (Default: local)")
 	
 	parser_grp7 = parser.add_argument_group("Miscellaneous")
-	parser_grp7.add_argument("--aws-path", required=False, help="Specify path to aws cli")
+	parser_grp7.add_argument("--aws-path", required=False, default="/usr/bin/aws", help="Specify path to aws cli")
 
 	parser_grp8 = parser.add_argument_group("Output")	
 	parser_grp8.add_argument("--output-dir", "-O", required=False,
@@ -89,7 +86,15 @@ def parseArgs(argv = None):
 	
 	parser.add_argument("--verbose", "-v", required=False, action="store_true", help="Verbose (Default = False)")
 	parser.add_argument("--debug", "-d", required=False, action="store_true", help="Verbose (Default = False)")
+	return parser
 
+def parseArgs(argv = None):
+	# Do argv default this way, as doing it in the functional
+	# declaration sets it at compile time.
+	if argv is None:
+		argv = sys.argv[1:]
+	
+	parser = getArgParser()
 	args = parser.parse_args(argv)
 	
 	if args.verbose:
@@ -442,16 +447,15 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 		for chr in bamVCF_diff:
 			print "\t" + chr
 		exit(1)
-		
-	
-	''' Make the intervals file for the BAM file and matching reference '''
-	intervalsFile = os.path.join(config.scratch_dir, sample +".intervals")
-	if config.verbose:
-		print "Generating intervals file: " + intervalsFile
-	vcfToIntervals(vcf, intervalsFile)
-	
+			
 	outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
 	if os.path.exists(outputVcf) == False:
+		''' Make the intervals file for the BAM file and matching reference '''
+		intervalsFile = os.path.join(config.scratch_dir, sample +".intervals")		
+		if config.verbose:
+			print "Generating intervals file: " + intervalsFile
+		vcfToIntervals(vcf, intervalsFile)
+
 		if config.caller == 'freebayes':
 			if config.verbose:
 				print "Calling freebayes"
@@ -471,6 +475,8 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 				print "Output VCF file, {}, could not be found in cache.".format(outputVcf)
 				exit(1)
 
+		os.remove(intervalsFile)
+
 	''' Convert the vcf to tsv '''
 	if config.verbose:
 		print "Convert VCF to TSV"
@@ -481,22 +487,32 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 	if deleteBam == True:
 		os.remove(localBamFile)	
 		os.remove(localBamIndex)
-	os.remove(intervalsFile)
 	return None
 
 def submitSample(sample, reference, vcf, config):
+	''' Only keep the variables we need for genotyping a sample '''
 	settings = { "sample": { "name": sample["name"],
 						     "bam": sample["bam"]
 						   }, 
 				"REFERENCE": reference,
 				"VCF": vcf,
+
 				"CACHE_DIR": config.cache_dir,
-				"SCRATCH_DIR": config.scratch_dir
+				"SCRATCH_DIR": config.scratch_dir,
+				"CALLER": config.caller,
+				"DP_THRESHOLD": config.dp_threshold,
+				"NUM_SNPS": config.number_of_snps,
+				"FREEBAYES_PATH": config.freebayes_path,
+				"AWS_PATH": config.aws_path,
+							
+				"VERBOSE": config.verbose,
+				"DEBUG": config.debug,
 			}
-	configFile = os.path.join(config.scratch_dir, sample["name"] + ".json")
-	with open(configFile, 'w') as f:
+	jsonFile = os.path.join(config.cache_dir, sample["name"] + ".json")
+	with open(jsonFile, 'w') as f:
 		json.dump(settings, f)
-	cmd = ["qsub", "-N", sample["name"], "-cwd", "-S", sys.executable, "-v", "CONFIGFILE="+configFile, __file__]
+	
+	cmd = ["qsub", "-N", sample["name"], "-cwd", "-S", sys.executable, "-v", "JSONFILE="+jsonFile, __file__]
 
 def genotypeSamples(sampleSet, reference, vcf, config):
 	jobs = []
@@ -847,10 +863,23 @@ def main(argv = None):
 	
 if __name__ == "__main__":
 	if os.environ.has_key("JOB_ID"):
-		configFile = os.environ.get("CONFIGFILE")
-		with open(configFile, 'r') as f:
-			config = json.load(f)	
-			genotypeSample(sample, bamFile, reference, vcf, config)
-			os.remove(configFile)
+		jsonConfigFile = os.environ.get("JSONFILE")
+		with open(jsonConfigFile, 'r') as f:
+			jsonConfig = json.load(f)
+			# TODO: Convert jsonConfig to Namespace
+			config = argparse.Namespace()
+			config.cache_dir = jsonConfig["CACHE_DIR"]
+			config.scratch_dir = jsonConfig["SCRATCH_DIR"]
+			config.caller = jsonConfig["CALLER"]
+			config.dp_threshold = jsonConfig["DP_THRESHOLD"] 
+			config.number_of_snps = jsonConfig["NUM_SNPS"] 
+			config.freebayes_path = jsonConfig["FREEBAYES_PATH"]
+			config.aws_path = jsonConfig["AWS_PATH"] 
+						
+			config.verbose = jsonConfig["VERBOSE"]
+			config.debug = jsonConfig["DEBUG"]
+			
+			genotypeSample(jsonConfig['sample']['name'], jsonConfig['sample']['bam'], jsonConfig["REFERENCE"], jsonConfig["VCF"], config)
+			os.remove(jsonConfigFile)
 	else:
 		sys.exit(main())
