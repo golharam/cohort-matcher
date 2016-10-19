@@ -161,16 +161,29 @@ def checkConfig(config):
 		if os.path.exists(reference_index) == False:
 			print "Reference 2 FASTA file (%s) is not indexed" % reference_index
 			exit(1)
-		if config.chromosome_map is not None:
-			if os.path.exists(config.chromosome_map) == False:
-				print "Chromosome map (%s) could not be read" % config.chromosome_map
-				exit(1)
-		else:
-			print "Chromosome map must be supplied when using 2 references"
+	if config.chromosome_map is not None:
+		if os.path.exists(config.chromosome_map) == False:
+			print "Chromosome map (%s) could not be read" % config.chromosome_map
 			exit(1)
 	
+	''' If reference2, vcf2, or chromosome-map is specified, make sure all are specified '''
+	if config.reference2 is not None or config.vcf2 is not None or config.chromosome_map is not None:
+		if config.reference2 is None:
+			print "Reference2 must be specified if vcf2 or chromosome-map is specified"
+			exit(1)
+		if config.vcf2 is None:
+			print "vcf2 must be speicfied if reference2 or chromosome-map is specified"
+			exit(1)
+		if config.chromosome_map is None:
+			print "Chromosome map must be specified is referenc2 or vcf2 is specified"
+			exit(1)
+			
 	if os.path.isdir(config.output_dir) == False:
 		print "Output directory (%s) does not exist" %config.output_dir
+		exit(1)
+		
+	if config.caller == "freebayes" and config.freebayes_path is None:
+		print "Freebayes-path must be set when caller is Freebayes"
 		exit(1)
 		
 def readSamples(sampleSheetFile, verbose):
@@ -367,89 +380,91 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 	if config.verbose:
 		print "Genotyping {}".format(sample)
 
-	''' Download the BAM file and index if they are not local '''
 	deleteBam = False
-	if bamFile.startswith("s3://"):
-		localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
-		if os.path.exists(localBamFile):
-			print "Using cached bam file: {}".format(localBamFile)
-		else:
-			downloadFileFromAmazon(bamFile, config.scratch_dir, config)
-		deleteBam = True
-		
-		''' If the index is already downloaded, use it '''
-		bamIndex1 = bamFile.rstrip(".bam") + ".bai"
-		bamIndex2 = bamFile + ".bai"
-		localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
-		localBamIndex2 = localBamFile + ".bai"
-		localBamIndex = ''
-	
-		if os.path.exists(localBamIndex1):
-			localBamIndex = localBamIndex1
-		elif os.path.exists(localBamIndex2):
-			localBamIndex = localBamIndex2
-		else:
-			''' Else, try to download index '''
-			if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
-				localBamIndex = localBamIndex1
-			else:
-				''' Try to download index 2 '''
-				if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
-					localBamIndex = localBamIndex2
-				else:
-					print "Could not find matching bam index.  Generating."
-					if len(config.samtools_path) == 0:
-						print "samtools path not specified"
-						exit(1)
-					cmd = [config.samtools_path, 'index', localBamFile]
-					p = subprocess.Popen(cmd)
-					p.wait()
-					if p.returncode != 0:
-						print "Unable to generated BAM index"
-						exit(1)
-	else:
-		localBamFile = os.path.abspath(bamFile)
-
-	''' Make sure BAM and reference have matching chromosomes '''
-	bam_chroms = get_chrom_names_from_BAM(localBamFile)
-	if config.debug:
-		for chr in bam_chroms:
-			print "\t" + chr
-			
-	if config.verbose:
-		print "Checking reference " + reference
-	REF_CHROMS = get_chrom_names_from_REF(reference)
-	if config.debug:
-		for chr in REF_CHROMS:
-			print "\t" + chr
-	
-	if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
-		#bamREF_diff = set(bam_chroms).difference(set(REF_CHROMS))
-		bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
-		#if len(bamREF_diff) >= (len(REF_CHROMS) / 2):
-		print "Sample {} contains chromosomes not in reference {}:".format(sample, reference)
-		for chr in bamREF_diff:
-			print chr
-		exit(1)
-		
-	''' Make sure the VCF file and the BAM file have matching chromosome names '''
-	if config.verbose:
-		print "Checking VCF " + vcf
-	VCF_chroms = get_chrom_names_from_VCF(vcf)
-	if config.debug:
-		for chr in VCF_chroms:
-			print "\t" + chr
-	
-	if set(VCF_chroms).issubset(set(bam_chroms)) == False:
-		bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
-		#if len(bamVCF_diff) >= (len(VCF_chroms) / 2):
-		print "Sample {} contains chromosomes not in VCF {}".format(sample, vcf)
-		for chr in bamVCF_diff:
-			print "\t" + chr
-		exit(1)
-			
 	outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
 	if os.path.exists(outputVcf) == False:
+		''' Download the BAM file and index if they are not local '''
+		if bamFile.startswith("s3://"):
+			localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
+			if os.path.exists(localBamFile):
+				print "Using cached bam file: {}".format(localBamFile)
+			else:
+				if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
+					print "File does not exist in Amazon."
+					return None
+			deleteBam = True
+			
+			''' If the index is already downloaded, use it '''
+			bamIndex1 = bamFile.rstrip(".bam") + ".bai"
+			bamIndex2 = bamFile + ".bai"
+			localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
+			localBamIndex2 = localBamFile + ".bai"
+			localBamIndex = ''
+		
+			if os.path.exists(localBamIndex1):
+				localBamIndex = localBamIndex1
+			elif os.path.exists(localBamIndex2):
+				localBamIndex = localBamIndex2
+			else:
+				''' Else, try to download index '''
+				if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
+					localBamIndex = localBamIndex1
+				else:
+					''' Try to download index 2 '''
+					if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
+						localBamIndex = localBamIndex2
+					else:
+						print "Could not find matching bam index.  Generating."
+						if len(config.samtools_path) == 0:
+							print "samtools path not specified"
+							exit(1)
+						cmd = [config.samtools_path, 'index', localBamFile]
+						p = subprocess.Popen(cmd)
+						p.wait()
+						if p.returncode != 0:
+							print "Unable to generated BAM index"
+							exit(1)
+		else:
+			localBamFile = os.path.abspath(bamFile)
+
+		''' Make sure BAM and reference have matching chromosomes '''
+		bam_chroms = get_chrom_names_from_BAM(localBamFile)
+		if config.debug:
+			for chr in bam_chroms:
+				print "\t" + chr
+				
+		if config.verbose:
+			print "Checking reference " + reference
+		REF_CHROMS = get_chrom_names_from_REF(reference)
+		if config.debug:
+			for chr in REF_CHROMS:
+				print "\t" + chr
+		
+		if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
+			#bamREF_diff = set(bam_chroms).difference(set(REF_CHROMS))
+			bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
+			#if len(bamREF_diff) >= (len(REF_CHROMS) / 2):
+			print "Sample {} contains chromosomes not in reference {}:".format(sample, reference)
+			for chr in bamREF_diff:
+				print chr
+			exit(1)
+			
+		''' Make sure the VCF file and the BAM file have matching chromosome names '''
+		if config.verbose:
+			print "Checking VCF " + vcf
+		VCF_chroms = get_chrom_names_from_VCF(vcf)
+		if config.debug:
+			for chr in VCF_chroms:
+				print "\t" + chr
+		
+		if set(VCF_chroms).issubset(set(bam_chroms)) == False:
+			bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
+			#if len(bamVCF_diff) >= (len(VCF_chroms) / 2):
+			print "Sample {} contains chromosomes not in VCF {}".format(sample, vcf)
+			for chr in bamVCF_diff:
+				print "\t" + chr
+			exit(1)
+				
 		''' Make the intervals file for the BAM file and matching reference '''
 		intervalsFile = os.path.join(config.scratch_dir, sample +".intervals")		
 		if config.verbose:
@@ -467,7 +482,7 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 			out, err = p.communicate()
 			p.wait()
 			if p.returncode != 0:
-				print "Error executing {}".format(cmd)
+				print "Error executing {}".format(' '.join(cmd))
 				print err
 				os.remove(outputVcf)
 				exit(1)
@@ -513,7 +528,16 @@ def submitSample(sample, reference, vcf, config):
 		json.dump(settings, f)
 	
 	cmd = ["qsub", "-N", sample["name"], "-cwd", "-S", sys.executable, "-v", "JSONFILE="+jsonFile, __file__]
-
+	p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	out, err = p.communicate()
+	p.wait()
+	if p.returncode != 0:
+		print "Error executing {}".format(' '.join(cmd))
+		print err
+		exit(1)
+	print out
+	exit(0)
+	
 def genotypeSamples(sampleSet, reference, vcf, config):
 	jobs = []
 	for sampleIndex in range(len(sampleSet)):
