@@ -2,6 +2,7 @@
 import argparse
 import ConfigParser
 import json
+import multiprocessing
 import os
 import pysam
 import subprocess
@@ -60,7 +61,10 @@ def getArgParser(genotyping = False):
 							default="local",
 							choices=('local', 'sge'),
 							help="Specify type of cluster architecture to use (Default: local)")
-	
+	parser_grp6.add_argument("--max-jobs", required=False,
+							default=1, type=int,
+							help="Maximum number of parallel genotyping jobs (Default: 1)")
+
 	parser_grp7 = parser.add_argument_group("Miscellaneous")
 	parser_grp7.add_argument("--aws-path", required=False, default="/usr/bin/aws", help="Specify path to aws cli")
 	parser_grp7.add_argument("--samtools-path", required=False, default="samtools", help="Specify path to samtools")
@@ -123,6 +127,8 @@ def parseArgs(argv = None):
 			print "Chromosome Map: {}".format(args.chromosome_map)
 		print ""
 		print "Cluster Type: {}".format(args.cluster)
+		print "Max Parallel Jobs: {}".format(args.max_jobs)
+		print ""
 		print "AWS Path: {}".format(args.aws_path)
 		print "Samtools Path: {}".format(args.samtools_path)
 		print ""
@@ -537,16 +543,24 @@ def submitSample(sample, reference, vcf, intervalsFile, config):
 	exit(0)
 	
 def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
+	num_workers = multiprocessing.cpu_count()
+	pool = multiprocessing.Pool(config.max_jobs)
+
 	jobs = []
 	for sampleIndex in range(len(sampleSet)):
 		sample = sampleSet[sampleIndex]
 		tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
 		if os.path.exists(tsvFile) == False:
 			if config.cluster == "local":
-				genotypeSample(sample["name"], sample["bam"], reference, vcf, intervalsFile, config)
+				pool.apply_async(genotypeSample, (sample["name"], sample["bam"], reference, vcf, intervalsFile, config))
+				#genotypeSample(sample["name"], sample["bam"], reference, vcf, intervalsFile, config)
 			elif config.cluster == "sge":
 				jobId = submitSample(sample, reference, vcf, intervalsFile, config)
 				jobs.append(jobId)
+
+	if config.cluster == "local":
+		pool.close()
+		pool.join()
 		
 def get_chrom_data_from_map(chrom_map_file):
     chrom_ct = 0
