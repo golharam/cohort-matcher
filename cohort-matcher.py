@@ -426,6 +426,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 						if p.returncode != 0:
 							print "Unable to generated BAM index"
 							exit(1)
+						localBamIndex = localBamIndex2
 		else:
 			localBamFile = os.path.abspath(bamFile)
 
@@ -488,8 +489,6 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 			if os.path.exists(outputVcf) == False:
 				print "Output VCF file, {}, could not be found in cache.".format(outputVcf)
 				exit(1)
-
-		os.remove(intervalsFile)
 
 	''' Convert the vcf to tsv '''
 	if config.verbose:
