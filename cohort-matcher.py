@@ -63,6 +63,7 @@ def getArgParser(genotyping = False):
 	
 	parser_grp7 = parser.add_argument_group("Miscellaneous")
 	parser_grp7.add_argument("--aws-path", required=False, default="/usr/bin/aws", help="Specify path to aws cli")
+	parser_grp7.add_argument("--samtools-path", required=False, default="samtools", help="Specify path to samtools")
 
 	parser_grp8 = parser.add_argument_group("Output")	
 	parser_grp8.add_argument("--output-dir", "-O", required=False,
@@ -123,6 +124,7 @@ def parseArgs(argv = None):
 		print ""
 		print "Cluster Type: {}".format(args.cluster)
 		print "AWS Path: {}".format(args.aws_path)
+		print "Samtools Path: {}".format(args.samtools_path)
 		print ""
 		print "Working in " + os.getcwd()
 	return args
@@ -376,7 +378,7 @@ def get_chrom_names_from_VCF(vcf_file):
 				chrom_list.append(vcfRecord.CHROM)
 	return chrom_list
 
-def genotypeSample(sample, bamFile, reference, vcf, config):
+def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 	if config.verbose:
 		print "Genotyping {}".format(sample)
 
@@ -430,6 +432,7 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 		''' Make sure BAM and reference have matching chromosomes '''
 		bam_chroms = get_chrom_names_from_BAM(localBamFile)
 		if config.debug:
+			print "BAM chromosomes:"
 			for chr in bam_chroms:
 				print "\t" + chr
 				
@@ -437,6 +440,7 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 			print "Checking reference " + reference
 		REF_CHROMS = get_chrom_names_from_REF(reference)
 		if config.debug:
+			print "Reference chromosomes:"
 			for chr in REF_CHROMS:
 				print "\t" + chr
 		
@@ -454,6 +458,7 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 			print "Checking VCF " + vcf
 		VCF_chroms = get_chrom_names_from_VCF(vcf)
 		if config.debug:
+			print "VCF chromosomes:"
 			for chr in VCF_chroms:
 				print "\t" + chr
 		
@@ -465,12 +470,6 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 				print "\t" + chr
 			exit(1)
 				
-		''' Make the intervals file for the BAM file and matching reference '''
-		intervalsFile = os.path.join(config.scratch_dir, sample +".intervals")		
-		if config.verbose:
-			print "Generating intervals file: " + intervalsFile
-		vcfToIntervals(vcf, intervalsFile)
-
 		if config.caller == 'freebayes':
 			if config.verbose:
 				print "Calling freebayes"
@@ -504,14 +503,14 @@ def genotypeSample(sample, bamFile, reference, vcf, config):
 		os.remove(localBamIndex)
 	return None
 
-def submitSample(sample, reference, vcf, config):
+def submitSample(sample, reference, vcf, intervalsFile, config):
 	''' Only keep the variables we need for genotyping a sample '''
 	settings = { "sample": { "name": sample["name"],
 						     "bam": sample["bam"]
 						   }, 
 				"REFERENCE": reference,
 				"VCF": vcf,
-
+				"INTERVALS": intervalsFile,
 				"CACHE_DIR": config.cache_dir,
 				"SCRATCH_DIR": config.scratch_dir,
 				"CALLER": config.caller,
@@ -538,16 +537,16 @@ def submitSample(sample, reference, vcf, config):
 	print out
 	exit(0)
 	
-def genotypeSamples(sampleSet, reference, vcf, config):
+def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
 	jobs = []
 	for sampleIndex in range(len(sampleSet)):
 		sample = sampleSet[sampleIndex]
 		tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
 		if os.path.exists(tsvFile) == False:
 			if config.cluster == "local":
-				genotypeSample(sample["name"], sample["bam"], reference, vcf, config)
+				genotypeSample(sample["name"], sample["bam"], reference, vcf, intervalsFile, config)
 			elif config.cluster == "sge":
-				jobId = submitSample(sample, reference, vcf, config)
+				jobId = submitSample(sample, reference, vcf, intervalsFile, config)
 				jobs.append(jobId)
 		
 def get_chrom_data_from_map(chrom_map_file):
@@ -877,11 +876,24 @@ def main(argv = None):
 	sampleSet1 = readSamples(config.set1, config.verbose)
 	sampleSet2 = readSamples(config.set2, config.verbose)
 
-	genotypeSamples(sampleSet1, config.reference, config.vcf, config)
+	''' Make the intervals file for the BAM file and matching reference '''
+	intervalsFile = os.path.join(config.cache_dir, "set1.intervals")		
+	intervalsFile2 = os.path.join(config.cache_dir, "set2.intervals")
+	if config.verbose:
+		print "Generating intervals file: " + intervalsFile
+	vcfToIntervals(config.vcf, intervalsFile)
 	if config.reference2 is None:
-		genotypeSamples(sampleSet2, config.reference, config.vcf, config)
+		shutil.copyfile(intervalsFile, intervalsFile2)
 	else:
-		genotypeSamples(sampleSet2, config.reference2, config.vcf2, config)	
+		if config.verbose:
+			print "Generating intervals file: " + intervalsFile2
+		vcfToIntervals(config.vcf2, intervalsFile2)
+
+	genotypeSamples(sampleSet1, config.reference, config.vcf, intervalsFile, config)
+	if config.reference2 is None:
+		genotypeSamples(sampleSet2, config.reference, config.vcf, intervalsFile2, config)
+	else:
+		genotypeSamples(sampleSet2, config.reference2, config.vcf2, intervalsFile2, config)	
 
 	compareSamples(sampleSet1, sampleSet2, config)
 	
