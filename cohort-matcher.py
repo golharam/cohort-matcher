@@ -343,8 +343,13 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
 	cmd = [config.aws_path, "s3", "cp", srcFile, destDirectory]
 	if config.verbose:
 		print "Downloading file: {}".format(srcFile)
-	p = subprocess.Popen(cmd)
+	if config.debug:
+		p = subprocess.Popen(cmd)
+	else:
+		p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		out, err = p.communicate()
 	p.wait()
+
 	if p.returncode != 0:
 		print "Error downloading file {}".format(srcFile)
 		return None
