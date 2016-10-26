@@ -5,6 +5,7 @@ import json
 import multiprocessing
 import os
 import pysam
+import shutil
 import subprocess
 import sys
 import vcf
