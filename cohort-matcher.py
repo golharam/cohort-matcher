@@ -76,6 +76,9 @@ def getArgParser(genotyping = False):
 						help="Specify output directory for sample comparisons (Default: ./cohort-matcher-output)")
 	parser_grp8.add_argument("--short-output", "-so", required=False, default=False, action="store_true",
 						help="Short output format (Default: False")
+	parser_grp8.add_argument("--report-file", required=False,
+						default="cohort-matcher-results.txt",
+						help="Specify name of similarity matrix file (Default: ./cohort-master-results.txt)")
 	'''
 	# Freebayes options
 	parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
@@ -111,6 +114,7 @@ def parseArgs(argv = None):
 		print "Scratch Dir: {}".format(args.scratch_dir)
 		print "Output Dir: {}".format(args.output_dir)
 		print "Short Report: {}".format(args.short_output)
+		print "Report File: {}".format(args.report_file)
 		print ""
 		print "Genotype Caller: {}".format(args.caller)
 		if args.caller == "freebayes":
@@ -882,8 +886,11 @@ CONCLUSION:
 			if sample1["name"] not in matrix:
 				matrix[sample1["name"]] = {}
 			matrix[sample1["name"]][sample2["name"]] = frac_common
+
 	''' print out grand matrix '''
-	REPORT_PATH = "./cohort-matcher-results.txt"
+	REPORT_PATH = config.args.report_file
+	if config.verbose:
+		print "Writing report to {}".format(REPORT_PATH)
 	with open(REPORT_PATH, "w") as fout:
 		for sample1 in sampleSet1:
 			fout.write("\t" + sample1["name"])
