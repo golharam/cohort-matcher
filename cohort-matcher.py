@@ -443,6 +443,8 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 			localBamFile = os.path.abspath(bamFile)
 
 		''' Make sure BAM and reference have matching chromosomes '''
+		if config.verbose:
+			print "{}: Getting BAM chromosomes".format(sample)
 		bam_chroms = get_chrom_names_from_BAM(localBamFile)
 		if config.debug:
 			print "BAM chromosomes:"
@@ -450,13 +452,15 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 				print "\t" + chr
 				
 		if config.verbose:
-			print "Checking reference " + reference
+			print "{}: Getting reference {} chromosomes".format(sample, reference)
 		REF_CHROMS = get_chrom_names_from_REF(reference)
 		if config.debug:
 			print "Reference chromosomes:"
 			for chr in REF_CHROMS:
 				print "\t" + chr
-		
+
+		if config.verbose:
+			print "{}: Comparing BAM and reference chromsomes".format(sample)
 		if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
 			#bamREF_diff = set(bam_chroms).difference(set(REF_CHROMS))
 			bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
@@ -468,7 +472,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 			
 		''' Make sure the VCF file and the BAM file have matching chromosome names '''
 		if config.verbose:
-			print "Checking VCF " + vcf
+			print "{}: Checking VCF {}".format(sample, vcf)
 		VCF_chroms = get_chrom_names_from_VCF(vcf)
 		if config.debug:
 			print "VCF chromosomes:"
@@ -485,7 +489,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 				
 		if config.caller == 'freebayes':
 			if config.verbose:
-				print "Calling freebayes"
+				print "{}: Calling freebayes".format(sample)
 			cmd = [config.freebayes_path, "--fasta-reference", reference, "--targets", intervalsFile, "--no-indels",
 				"--min-coverage", str(config.dp_threshold), "--report-all-haplotype-alleles", "--report-monomorphic", 
 				"--vcf", outputVcf, localBamFile]
@@ -504,7 +508,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 
 	''' Convert the vcf to tsv '''
 	if config.verbose:
-		print "Convert VCF to TSV"
+		print "{}: Convert VCF to TSV".format(sample)
 	out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
 	if os.path.exists(out_tsv) == False:
 		VCFtoTSV(outputVcf, out_tsv, config.caller)
@@ -512,6 +516,9 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 	if deleteBam == True:
 		os.remove(localBamFile)	
 		os.remove(localBamIndex)
+
+	if config.verbose:
+		print "{}: Done".format(sample)
 	return None
 
 def submitSample(sample, reference, vcf, intervalsFile, config):
