@@ -888,7 +888,7 @@ CONCLUSION:
 			matrix[sample1["name"]][sample2["name"]] = frac_common
 
 	''' print out grand matrix '''
-	REPORT_PATH = config.args.report_file
+	REPORT_PATH = config.report_file
 	if config.verbose:
 		print "Writing report to {}".format(REPORT_PATH)
 	with open(REPORT_PATH, "w") as fout:
