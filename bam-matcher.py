@@ -137,63 +137,60 @@ def handle_args():
 # Parsing configuration file and command line options
 #-------------------------------------------------------------------------------
 # Before calling handle_args(), need to check if --generate-config was called
-GENERATE_CONFIG_SYMS = ["--generate-config", "--generate_config", "-G"]
-ALTERNATE_REF_SYMS = ["--about-alternate-ref", "--about_alternate_ref", "-A"]
+def parse_args():
+    GENERATE_CONFIG_SYMS = ["--generate-config", "--generate_config", "-G"]
+    ALTERNATE_REF_SYMS = ["--about-alternate-ref", "--about_alternate_ref", "-A"]
+    
+    for idx, arg in enumerate(sys.argv):
+        # generate config template
+        if arg in GENERATE_CONFIG_SYMS:
+            try:
+                config_template_output = os.path.abspath(sys.argv[idx+1])
+            except:
+                config_template_output = os.path.abspath("bam-matcher.conf.template")
 
-for idx, arg in enumerate(sys.argv):
-    # generate config template
-    if arg in GENERATE_CONFIG_SYMS:
-        try:
-            config_template_output = os.path.abspath(sys.argv[idx+1])
-        except:
-            config_template_output = os.path.abspath("bam-matcher.conf.template")
-        print """
-====================================
-Generating configuration file template
-====================================
+            print "===================================="
+            print "Generating configuration file template"
+            print "===================================="
+            print ""
+            print "Config template will be written to %s" % config_template_output
+            print ""
+    
+            # make sure that it doesn't overwrite anything!
+            if os.path.isfile(config_template_output):
+                print "%s\nThe specified path ('%s') for config template exists already." % (FILE_ERROR, config_template_output)
+                print "Write to another file."
+                sys.exit(1)
+            fout = open(config_template_output, "w")
+            fout.write(CONFIG_TEMPLATE_STR)
+            fout.close()
+            exit()
+    
+        # print information about alternate genome reference
+        if arg in ALTERNATE_REF_SYMS:
+            print ABOUT_ALTERNATE_REF_MSG
+            exit()
 
-Config template will be written to %s
-
-""" % config_template_output
-
-        # make sure that it doesn't overwrite anything!
-        if os.path.isfile(config_template_output):
-            print "%s\nThe specified path ('%s') for config template exists already." % (FILE_ERROR, config_template_output)
-            print "Write to another file."
+def check_experimental():
+    # EXPERIMENTAL METHODS
+    if args.experimental:
+        from bammatcher_exp import *
+    
+    # if experimental is not enabled, need some error-catching
+    if args.experimental == False:
+    
+        # trying to generate AF graphs without --experimental
+        if args.allele_freq:
+            print "%s\nThe --allele-freq is an experimental feature," % ARGUMENT_ERROR
+            print "To use this feature, you must also select --experimental"
             sys.exit(1)
-        fout = open(config_template_output, "w")
-        fout.write(CONFIG_TEMPLATE_STR)
-        fout.close()
-        exit()
+    
+        # trying to use SNP panel data without --experimental
 
-    # print information about alternate genome reference
-    if arg in ALTERNATE_REF_SYMS:
-        print ABOUT_ALTERNATE_REF_MSG
-        exit()
-
+parse_args()
 # okay to parse the arguments now
 args = handle_args()
-
-
-
-# EXPERIMENTAL METHODS
-if args.experimental:
-    from bammatcher_exp import *
-
-# if experimental is not enabled, need some error-catching
-if args.experimental == False:
-
-    # trying to generate AF graphs without --experimental
-    if args.allele_freq:
-        print """%s\nThe --allele-freq is an experimental feature,
-To use this feature, you must also select --experimental
-""" % ARGUMENT_ERROR
-        sys.exit(1)
-
-    # trying to use SNP panel data without --experimental
-
-
-
+check_experimental()
 
 #-------------------------------------------------------------------------------
 # Some random-related stuff, this is for temp files
@@ -206,34 +203,37 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 #-------------------------------------------------------------------------------
 # Read in configuration file
-config_file = ""
-if args.config == None:
-    config_file = os.path.join(SCRIPT_DIR, "bam-matcher.conf")
-else:
-    config_file = os.path.abspath(os.path.expanduser(args.config))
+def readConfig():
+    if args.config == None:
+        config_file = os.path.join(SCRIPT_DIR, "bam-matcher.conf")
+    else:
+        config_file = os.path.abspath(os.path.expanduser(args.config))
 
-# Test if the config file exists
-if check_file_read(config_file, "config", CONFIG_ERROR) == False: exit(1)
+    # Test if the config file exists
+    if check_file_read(config_file, "config", CONFIG_ERROR) == False: exit(1)
 
-# Load config and check if all necessary bits are available
-config = ConfigParser.ConfigParser()
-try:
-    config.read(config_file)
-except ConfigParser.Error as e:
-    print "%s\nUnspecified configuration file error. Please check configuration file.\n\nPython error msg:\n%s" % (CONFIG_ERROR, e)
-    exit(1)
-
-# are all the sections there?
-config_sections = config.sections()
-REQUIRED_CONFIG_SECTIONS = ["GenomeReference", "VariantCallerParameters",
-                            "ScriptOptions", "VariantCallers", "Miscellaneous",
-                            "BatchOperations"]
-for sect in REQUIRED_CONFIG_SECTIONS:
-    if sect not in config_sections:
-        print """%s
-Missing required section in config file: %s
-""" % (CONFIG_ERROR, sect)
+    # Load config and check if all necessary bits are available
+    config = ConfigParser.ConfigParser()
+    try:
+        config.read(config_file)
+    except ConfigParser.Error as e:
+        print "%s\nUnspecified configuration file error. Please check configuration file.\n\nPython error msg:\n%s" % (CONFIG_ERROR, e)
         exit(1)
+
+    # are all the sections there?
+    config_sections = config.sections()
+    REQUIRED_CONFIG_SECTIONS = ["GenomeReference", "VariantCallerParameters",
+                                "ScriptOptions", "VariantCallers", "Miscellaneous",
+                                "BatchOperations"]
+    for sect in REQUIRED_CONFIG_SECTIONS:
+        if sect not in config_sections:
+            print """%s
+    Missing required section in config file: %s
+    """ % (CONFIG_ERROR, sect)
+            exit(1)
+    return config
+
+config = readConfig()
 #-------------------------------------------------------------------------------
 # setting variables using the config file
 CONFIG_CALLER  = fetch_config_value(config, "VariantCallers", "caller")
@@ -272,21 +272,28 @@ CHECKING INPUT AND OUTPUT
 ================================================================================
 """
 
-BAM1 = os.path.abspath(os.path.expanduser(args.bam1))
-BAM2 = os.path.abspath(os.path.expanduser(args.bam2))
-
-# check input bams are readable and indexed
-for bam_file in [BAM1, BAM2]:
+def checkBAMFile(bam_file):
     if check_file_read(bam_file, "BAM", FILE_ERROR) == False: exit(1)
-
     # check bam files are indexed:
     bam_index2 = bam_file.rstrip(".bam") + ".bai"
     bam_index1 = bam_file + ".bai"
     if (os.access(bam_index1, os.R_OK) == False and
         os.access(bam_index2, os.R_OK) == False):
-        print "%s\nInput BAM file (%s) is either missing index or the index \
-file is not readable." % (FILE_ERROR, bam_file)
+        print "%s\nInput BAM file (%s) is either missing index or the index file is not readable." % (FILE_ERROR, bam_file)
         exit(1)
+
+# get sample name
+sample1 = os.path.basename(args.bam1)
+sample1 = sample1.split('.')[0]
+sample2 = os.path.basename(args.bam2)
+sample2 = sample2.split('.')[0]
+print "Sample1: %s" % sample1
+print "Sample2: %s" % sample2
+
+BAM1 = os.path.abspath(os.path.expanduser(args.bam1))
+BAM2 = os.path.abspath(os.path.expanduser(args.bam2))
+checkBAMFile(BAM1)
+checkBAMFile(BAM2)
 
 # ----------------------------
 # resolving output report path
@@ -893,8 +900,11 @@ m2.update(REFERENCE)
 for line in get_bam_header(BAM2):
     m2.update(line)
 
-bam1_cache_path = os.path.join(CACHE_DIR, m1.hexdigest())
-bam2_cache_path = os.path.join(CACHE_DIR, m2.hexdigest())
+#bam1_cache_path = os.path.join(CACHE_DIR, m1.hexdigest())
+#bam2_cache_path = os.path.join(CACHE_DIR, m2.hexdigest())
+bam1_cache_path = os.path.join(CACHE_DIR, sample1)
+bam2_cache_path = os.path.join(CACHE_DIR, sample2)
+
 bam1_is_cached = os.access(bam1_cache_path, os.R_OK)
 bam2_is_cached = os.access(bam2_cache_path, os.R_OK)
 if BATCH_USE_CACHED == False:
@@ -903,6 +913,8 @@ if BATCH_USE_CACHED == False:
 if args.verbose:
     print "BAM1 is cached:", bam1_is_cached
     print "BAM2 is cached:", bam2_is_cached
+    print "BAM1 cache path:", bam1_cache_path
+    print "BAM2 cache path:", bam2_cache_path
 
 # Only check callers if not using cached data
 # Test caller binaries
@@ -936,10 +948,8 @@ interval_files_list = []
 if bam1_is_cached == False or bam2_is_cached == False:
     if args.verbose:
         print "Creating intervals file"
-    bam1_itv = os.path.join(SCRATCH_DIR, "bam1.intervals")
-    bam2_itv = os.path.join(SCRATCH_DIR, "bam2.intervals")
-    temp_files.append(bam1_itv)
-    temp_files.append(bam2_itv)
+    bam1_itv = os.path.join(CACHE_DIR, sample1 + ".intervals")
+    bam2_itv = os.path.join(CACHE_DIR, sample2 + ".intervals")
 
     # if using default reference (or alternate reference),
     # assume that the VCF file is same as default
@@ -987,8 +997,8 @@ chromosome map:             %s
 # Caller output files
 if args.verbose:
     print "\n----------------\nCalling variants\n----------------"
-vcf1 = os.path.join(SCRATCH_DIR, "bam1.vcf")
-vcf2 = os.path.join(SCRATCH_DIR, "bam2.vcf")
+vcf1 = os.path.join(CACHE_DIR, sample1 + ".vcf")
+vcf2 = os.path.join(CACHE_DIR, sample2 + ".vcf")
 # pileup files, for VarScan
 pup1 = os.path.join(SCRATCH_DIR, "bam1.pileup")
 pup2 = os.path.join(SCRATCH_DIR, "bam2.pileup")
@@ -1000,9 +1010,6 @@ ref_list           = [bam1_ref, bam2_ref]
 cached_list        = [bam1_is_cached, bam2_is_cached]
 cache_path_list    = [bam1_cache_path, bam2_cache_path]
 # add temp files
-temp_files += [vcf1, vcf2]
-temp_files.append(vcf1+".idx")
-temp_files.append(vcf2+".idx")
 temp_files += pup_list
 
 # Variant calling is not done in a single step,
@@ -1232,10 +1239,9 @@ Variant-calling finished
 # Comparing variant data
 #===============================================================================
 
-tsv1 = os.path.join(SCRATCH_DIR, "bam1.tsv")
-tsv2 = os.path.join(SCRATCH_DIR, "bam2.tsv")
+tsv1 = os.path.join(CACHE_DIR, sample1 + ".tsv")
+tsv2 = os.path.join(CACHE_DIR, sample2 + ".tsv")
 tsv_list = [tsv1, tsv2]
-temp_files += tsv_list
 
 if args.verbose:
     print """
