@@ -1,7 +1,7 @@
 import unittest
 from mock import patch
 
-from cohort_matcher import main
+from cohort_matcher import main, parseArguments
 
 class TestCohortMatcher(unittest.TestCase):
     def setUp(self):
@@ -28,7 +28,7 @@ class TestCohortMatcher(unittest.TestCase):
     def test_main(self, mock_compareSamples, mock_genotypeSamples,
                   mock_vcfToIntervals, mock_readSamples,
                   mock_checkConfig, mock_parseArguments):
-        # Set up test parameters
+        # Set up test case
         argv = []
         # Set up supporting mocks
         # Test
@@ -40,7 +40,16 @@ class TestCohortMatcher(unittest.TestCase):
         self.skipTest("not yet implemented")
 
     def test_parseArguments(self):
-        self.skipTest("not yet implemented")
+        # Set up test case
+        args = ['-S1', 'set1', '-S2', 'set2', '-V', 'somevcf', '-R', 'someref']
+        # Set up supporting mocks
+        # Test
+        actual_args = parseArguments(args)
+        # Check results
+        self.assertEqual(actual_args.set1, 'set1')
+        self.assertEqual(actual_args.set2, 'set2')
+        self.assertEqual(actual_args.vcf, 'somevcf')
+        self.assertEqual(actual_args.reference, 'someref')
 
     def test_vcfToIntervals(self):
         self.skipTest("not yet implemented")
