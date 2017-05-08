@@ -845,6 +845,7 @@ def main(argv):
         genotypeSamples(sampleSet2, config.reference2, config.vcf2, intervalsFile2, config)
 
     compareSamples(sampleSet1, sampleSet2, config)
+    return 0
 
 if __name__ == "__main__":
     main(sys.argv[1:])
