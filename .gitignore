@@ -3,3 +3,7 @@
 
 *.pyc
 python_env/
+
+.coverage
+cover/
+pylint.out
