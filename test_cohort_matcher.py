@@ -1,17 +1,20 @@
 import unittest
-from mock import patch
+import logging
+from mock import patch, MagicMock
 
-from cohort_matcher import main, parseArguments
+from cohort_matcher import checkConfig, main, parseArguments
 
 class TestCohortMatcher(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test_checkConfig(self):
-        self.skipTest("not yet implemented")
+    @patch('os.path.isdir')
+    @patch('os.path.exists')
+    def test_checkConfig(self, mock_exists, mock_isdir):
+        # Set up test case
+        config = MagicMock(log_level=logging.INFO, reference='', reference2=None, vcf2=None, chromosome_map=None)
+        # Set up supporting mocks
+        # Test
+        retVal = checkConfig(config)
+        # Check results
+        self.assertTrue(retVal)
 
     def test_compareSamples(self):
         self.skipTest("not yet implemented")

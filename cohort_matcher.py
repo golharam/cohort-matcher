@@ -55,11 +55,12 @@ def checkConfig(config):
        config.chromosome_map is not None:
         if config.reference2 is None:
             logger.error("Reference2 must be specified if vcf2 or chromosome-map is specified")
-        if config.vcf2 is None:
+        elif config.vcf2 is None:
             logger.error("vcf2 must be speicfied if reference2 or chromosome-map is specified")
-        if config.chromosome_map is None:
+        elif config.chromosome_map is None:
             logger.error("Chromosome map must be specified is referenc2 or vcf2 is specified")
-        return False
+        else:
+            return False
     if os.path.isdir(config.output_dir) is False:
         logger.error("Output directory (%s) does not exist", config.output_dir)
         return False
@@ -701,9 +702,9 @@ Fraction of common: %f (%d/%d)
 ________________________________________
 CONCLUSION:
 %s"""  % (sample1["name"], sample2["name"], config.vcf, config.dp_threshold,
-                    ct_common, comm_hom_ct, comm_het_ct,
-                    ct_diff, diff_het, diff_hom_het, diff_1sub2, diff_het_hom, diff_hom, diff_2sub1,
-                    total_compared, frac_common, ct_common, total_compared, judgement)
+          ct_common, comm_hom_ct, comm_het_ct, ct_diff, diff_het, diff_hom_het,
+          diff_1sub2, diff_het_hom, diff_hom, diff_2sub1, total_compared,
+          frac_common, ct_common, total_compared, judgement)
             short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t 
             Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t 
             1sub-2het\t Conclusion
