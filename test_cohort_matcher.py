@@ -4,14 +4,16 @@ from mock import patch, MagicMock, mock
 from tempfile import NamedTemporaryFile
 import os
 import filecmp
-from cohort_matcher import checkConfig, main, parseArguments, readSamples, vcfToIntervals, genotypeSamples
+from cohort_matcher import checkConfig, main, parseArguments, readSamples, \
+     vcfToIntervals, genotypeSamples, genotypeSample
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
     @patch('os.path.exists')
     def test_checkConfig(self, mock_exists, mock_isdir):
         # Set up test case
-        config = MagicMock(log_level=logging.INFO, reference='', reference2=None, vcf2=None, chromosome_map=None)
+        config = MagicMock(log_level=logging.INFO, reference='', reference2=None,
+                           vcf2=None, chromosome_map=None)
         # Set up supporting mocks
         # Test
         retVal = checkConfig(config)
@@ -21,6 +23,40 @@ class TestCohortMatcher(unittest.TestCase):
     def test_compareSamples(self):
         self.skipTest("not yet implemented")
 
+    def test_downloadBAMFile(self):
+        self.skipTest("not yet implemented")
+
+    @patch('os.path.exists')
+    @patch('cohort_matcher.downloadBAMFile')
+    @patch('cohort_matcher.get_chrom_names_from_BAM')
+    @patch('cohort_matcher.get_chrom_names_from_REF')
+    @patch('cohort_matcher.get_chrom_names_from_VCF')
+    @patch('subprocess.Popen')
+    @patch('cohort_matcher.VCFtoTSV')
+    @patch('os.remove')
+    def test_genotypeSample(self, mock_osremove, mock_VCFtoTSV, mock_Popen, mock_getChromNamesFromVCF, 
+                            mock_getChromNamesFromREF, mock_getChromNamesFromBAM, 
+                            mock_downloadBAMFile, mock_pathexists):
+        # Set up test parameters
+        sample = 'asdf'
+        bamFile = 's3://some/path/to/asdf.bam'
+        # Set up supporting mocks
+        mock_pathexists.side_effect = [False, True, False]
+        mock_downloadBAMFile.return_value = "/tmp/asdf.bam", "/tmp/asdf.bam.bai"
+        mock_getChromNamesFromBAM.return_value = ['chr1', 'chr2', 'chr3']
+        mock_getChromNamesFromREF.return_value = ['chr1', 'chr2', 'chr3']
+        mock_getChromNamesFromVCF.return_value = ['chr1', 'chr2', 'chr3']
+        p = MagicMock(name="caller_cmd", returncode=0)
+        p.communicate.return_value = None, None
+        mock_Popen.return_value = p
+        # Test
+        genotypeSample(sample, bamFile, "reference", "vcf", "intervalsFile", MagicMock(name="config", cache_dir="./cache", caller="freebayes"))
+        # Check results
+        mock_Popen.assert_called_once()
+        mock_VCFtoTSV.assert_called_once()
+        mock_osremove.assert_any_call('/tmp/asdf.bam')
+        mock_osremove.assert_any_call('/tmp/asdf.bam.bai')
+        
     @patch('multiprocessing.cpu_count')
     @patch('multiprocessing.Pool')
     @patch('os.path.join')
@@ -40,6 +76,15 @@ class TestCohortMatcher(unittest.TestCase):
                         MagicMock(name='intervalsFile'), MagicMock(name='config'))
         # Check results
         pool.apply_async.assert_called_once()
+
+    def test_get_chrom_names_from_BAM(self):
+        self.skipTest('nyi')
+    
+    def test_get_chrom_names_from_REF(self):
+        self.skipTest('nyi')
+        
+    def testget_chrom_names_from_VCF(self):
+        self.skipTest('nyi')
 
     @patch('cohort_matcher.parseArguments')
     @patch('cohort_matcher.checkConfig')
@@ -102,3 +147,6 @@ class TestCohortMatcher(unittest.TestCase):
         self.assertTrue(filecmp.cmp(bedFile.name, "test_data/hg19.exome.highAF.1511.bed"))
         # Clean up
         os.remove(bedFile.name)
+    
+    def test_VCFtoTSV(self):
+        self.skipTest('nyi')

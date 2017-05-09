@@ -1,119 +1,23 @@
 #!/bin/env python
+'''
+cohort_matcher - Compare genotypes of two cohorts of samples
+'''
 import argparse
-import ConfigParser
-import json
 import multiprocessing
 import os
-import pysam
 import shutil
 import subprocess
 import sys
+import logging
+import pysam
 import vcf
 from fisher import pvalue
-import logging
 
 logger = logging.getLogger(__name__)
 
-def checkConfig(config):
-    '''
-    checkConfig makes sure all the parameters specified are valid
-    '''
-    if os.path.isdir(config.cache_dir) is False:
-        logger.error("Cache dir (%s) is not a directory", config.cache_dir)
-        return False
-    if os.path.isdir(config.scratch_dir) is False:
-        logger.error("Scratch dir (%s) is not a directory", config.scratch_dir)
-        return False
-    if os.path.exists(config.vcf) is False:
-        logger.error("VCF file (%s) is not accessible", config.vcf)
-        return False
-    if config.vcf2 is not None and os.path.exists(config.vcf2) is False:
-        logger.error("VCF2 (%s) is not accessible", config.vcf2)
-        return False
-    if os.path.exists(config.reference) is False:
-        logger.error("Reference FASTA file (%s) is not accessible", config.reference)
-        return False
-    reference_index = config.reference + ".fai"
-    if os.path.exists(reference_index) is False:
-        logger.error("Reference FASTA file (%s) is not indexed", reference_index)
-        return False
-    if config.reference2 is not None:
-        if os.path.exists(config.reference2) is False:
-            logger.error("Reference2 FASTA file (%s) is not accessible", config.reference2)
-            return False
-        reference_index = config.reference2 + ".fai"
-        if os.path.exists(reference_index) is False:
-            logger.error("Reference 2 FASTA file (%s) is not indexed", reference_index)
-            return False
-    if config.chromosome_map is not None:
-        if os.path.exists(config.chromosome_map) is False:
-            logger.error("Chromosome map (%s) could not be read", config.chromosome_map)
-            return False
-    ''' If reference2, vcf2, or chromosome-map is specified, make sure all are specified '''
-    if config.reference2 is not None or config.vcf2 is not None or \
-       config.chromosome_map is not None:
-        if config.reference2 is None:
-            logger.error("Reference2 must be specified if vcf2 or chromosome-map is specified")
-        elif config.vcf2 is None:
-            logger.error("vcf2 must be speicfied if reference2 or chromosome-map is specified")
-        elif config.chromosome_map is None:
-            logger.error("Chromosome map must be specified is referenc2 or vcf2 is specified")
-        else:
-            return False
-    if os.path.isdir(config.output_dir) is False:
-        logger.error("Output directory (%s) does not exist", config.output_dir)
-        return False
-    if config.caller == "freebayes" and config.freebayes_path is None:
-        logger.error("Freebayes-path must be set when caller is Freebayes")
-        return False
-    return True
 
-def readSamples(sampleSheetFile):
-    if os.path.isfile(sampleSheetFile) is False:
-        logger.error("%s does not exist", sampleSheetFile)
-        return False
-    logger.info("Reading %s", sampleSheetFile)
-    samples = []
-    with open(sampleSheetFile, 'r') as f:
-        for line in f:
-            line = line.rstrip('\r\n')
-            if len(line) == 0 or line.startswith('#'):
-                continue
 
-            fields = line.split('\t')
-            if len(fields) != 2:
-                logger.error("Expect 2 fields (sampleName, bamFile) but encountered %d",
-                             len(fields))
-                return False
 
-            sampleBamfile = fields[1]
-            sample = {"name": fields[0],
-                      "bam": fields[1]}
-            samples.append(sample)
-    return samples
-
-def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
-    vcf_read = vcf.Reader(open(vcfFile, "r"))
-    fout = open(bedFile, "w")
-    for var in vcf_read:
-        # intervals format
-        chrom_ = var.CHROM
-        if cmap != None:
-            if var.CHROM not in cmap:
-                continue
-            else:
-                chrom_ = cmap[var.CHROM]
-        if format == "gatk" or format == "varscan":
-            start_pos = var.POS - window
-            end_pos = start_pos + window
-            fout.write("%s:%d-%d\n" % (chrom_, start_pos, end_pos))
-        # BED format
-        elif format == "bed" or format == "freebayes":
-            start_pos = var.POS - window - 1
-            end_pos = start_pos + window + 1
-            fout.write("%s\t%d\t%d\n" % (chrom_, start_pos, end_pos))
-    fout.close()
-    return
 
 def VCFtoTSV(invcf, outtsv, caller):
     fout = open(outtsv, "w")
@@ -200,6 +104,49 @@ def isFileInAmazon(srcFile, config):
             return True
     return False
 
+def downloadBAMFile(bamFile, config):
+    localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
+    if os.path.exists(localBamFile):
+        print "Using cached bam file: {}".format(localBamFile)
+    else:
+        if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
+            print "File does not exist in Amazon."
+            return None
+    deleteBam = True
+
+    ''' If the index is already downloaded, use it '''
+    bamIndex1 = bamFile.rstrip(".bam") + ".bai"
+    bamIndex2 = bamFile + ".bai"
+    localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
+    localBamIndex2 = localBamFile + ".bai"
+    localBamIndex = ''
+
+    if os.path.exists(localBamIndex1):
+        localBamIndex = localBamIndex1
+    elif os.path.exists(localBamIndex2):
+        localBamIndex = localBamIndex2
+    else:
+        ''' Else, try to download index '''
+        if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
+            localBamIndex = localBamIndex1
+        else:
+            ''' Try to download index 2 '''
+            if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
+                localBamIndex = localBamIndex2
+            else:
+                print "Could not find matching bam index.  Generating."
+                if len(config.samtools_path) == 0:
+                    print "samtools path not specified"
+                    exit(1)
+                cmd = [config.samtools_path, 'index', localBamFile]
+                p = subprocess.Popen(cmd)
+                p.wait()
+                if p.returncode != 0:
+                    print "Unable to generated BAM index"
+                    exit(1)
+                localBamIndex = localBamIndex2
+    return localBamFile
+
 def downloadFileFromAmazon(srcFile, destDirectory, config):
     if len(config.aws_path) == 0:
         print "AWS Path not set"
@@ -257,148 +204,6 @@ def get_chrom_names_from_VCF(vcf_file):
                 chrom_list.append(vcfRecord.CHROM)
     return chrom_list
 
-def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
-    logger.info("Genotyping {}".format(sample))
-
-    deleteBam = False
-    outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
-    if os.path.exists(outputVcf) == False:
-        ''' Download the BAM file and index if they are not local '''
-        if bamFile.startswith("s3://"):
-            localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
-            if os.path.exists(localBamFile):
-                print "Using cached bam file: {}".format(localBamFile)
-            else:
-                if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
-                    print "File does not exist in Amazon."
-                    return None
-            deleteBam = True
-
-            ''' If the index is already downloaded, use it '''
-            bamIndex1 = bamFile.rstrip(".bam") + ".bai"
-            bamIndex2 = bamFile + ".bai"
-            localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
-            localBamIndex2 = localBamFile + ".bai"
-            localBamIndex = ''
-
-            if os.path.exists(localBamIndex1):
-                localBamIndex = localBamIndex1
-            elif os.path.exists(localBamIndex2):
-                localBamIndex = localBamIndex2
-            else:
-                ''' Else, try to download index '''
-                if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
-                    localBamIndex = localBamIndex1
-                else:
-                    ''' Try to download index 2 '''
-                    if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
-                        localBamIndex = localBamIndex2
-                    else:
-                        print "Could not find matching bam index.  Generating."
-                        if len(config.samtools_path) == 0:
-                            print "samtools path not specified"
-                            exit(1)
-                        cmd = [config.samtools_path, 'index', localBamFile]
-                        p = subprocess.Popen(cmd)
-                        p.wait()
-                        if p.returncode != 0:
-                            print "Unable to generated BAM index"
-                            exit(1)
-                        localBamIndex = localBamIndex2
-        else:
-            localBamFile = os.path.abspath(bamFile)
-
-        ''' Make sure BAM and reference have matching chromosomes '''
-        if config.verbose:
-            print "{}: Getting BAM chromosomes".format(sample)
-        bam_chroms = get_chrom_names_from_BAM(localBamFile)
-        if config.debug:
-            print "BAM chromosomes:"
-            for chr in bam_chroms:
-                print "\t" + chr
-
-        if config.verbose:
-            print "{}: Getting reference {} chromosomes".format(sample, reference)
-        REF_CHROMS = get_chrom_names_from_REF(reference)
-        if config.debug:
-            print "Reference chromosomes:"
-            for chr in REF_CHROMS:
-                print "\t" + chr
-
-        if config.verbose:
-            print "{}: Comparing BAM and reference chromsomes".format(sample)
-        if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
-            #bamREF_diff = set(bam_chroms).difference(set(REF_CHROMS))
-            bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
-            #if len(bamREF_diff) >= (len(REF_CHROMS) / 2):
-            print "Sample {} contains chromosomes not in reference {}:".format(sample, reference)
-            for chr in bamREF_diff:
-                print chr
-            exit(1)
-
-        ''' Make sure the VCF file and the BAM file have matching chromosome names '''
-        if config.verbose:
-            print "{}: Checking VCF {}".format(sample, vcf)
-        VCF_chroms = get_chrom_names_from_VCF(vcf)
-        if config.debug:
-            print "VCF chromosomes:"
-            for chr in VCF_chroms:
-                print "\t" + chr
-
-        if set(VCF_chroms).issubset(set(bam_chroms)) == False:
-            bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
-            #if len(bamVCF_diff) >= (len(VCF_chroms) / 2):
-            print "Sample {} contains chromosomes not in VCF {}".format(sample, vcf)
-            for chr in bamVCF_diff:
-                print "\t" + chr
-            exit(1)
-
-        if config.caller == 'freebayes':
-            if config.verbose:
-                print "{}: Calling freebayes".format(sample)
-            cmd = [config.freebayes_path, "--fasta-reference", reference, "--targets",
-                   intervalsFile, "--no-indels", "--min-coverage", str(config.dp_threshold),
-                   "--report-all-haplotype-alleles", "--report-monomorphic", "--vcf",
-                   outputVcf, localBamFile]
-
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = p.communicate()
-            p.wait()
-            if p.returncode != 0:
-                print "Error executing {}".format(' '.join(cmd))
-                print err
-                os.remove(outputVcf)
-                exit(1)
-            if os.path.exists(outputVcf) == False:
-                print "Output VCF file, {}, could not be found in cache.".format(outputVcf)
-                exit(1)
-
-    ''' Convert the vcf to tsv '''
-    if config.verbose:
-        print "{}: Convert VCF to TSV".format(sample)
-    out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
-    if os.path.exists(out_tsv) == False:
-        VCFtoTSV(outputVcf, out_tsv, config.caller)
-
-    if deleteBam == True:
-        os.remove(localBamFile)
-        os.remove(localBamIndex)
-
-    if config.verbose:
-        print "{}: Done".format(sample)
-    return None
-
-def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
-    pool = multiprocessing.Pool(config.max_jobs)
-    for sampleIndex in range(len(sampleSet)):
-        sample = sampleSet[sampleIndex]
-        tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
-        if os.path.exists(tsvFile) is False:
-            pool.apply_async(genotypeSample, (sample["name"], sample["bam"], reference,
-                                              vcf, intervalsFile, config))
-    pool.close()
-    pool.join()
-
 def get_chrom_data_from_map(chrom_map_file):
     chrom_ct = 0
     default_chroms = []
@@ -444,7 +249,61 @@ def is_subset(hom_gt, het_gt):
     else:
         return False
 
-# test
+########################################################################################
+def checkConfig(config):
+    '''
+    checkConfig makes sure all the parameters specified are valid
+    '''
+    if os.path.isdir(config.cache_dir) is False:
+        logger.error("Cache dir (%s) is not a directory", config.cache_dir)
+        return False
+    if os.path.isdir(config.scratch_dir) is False:
+        logger.error("Scratch dir (%s) is not a directory", config.scratch_dir)
+        return False
+    if os.path.exists(config.vcf) is False:
+        logger.error("VCF file (%s) is not accessible", config.vcf)
+        return False
+    if config.vcf2 is not None and os.path.exists(config.vcf2) is False:
+        logger.error("VCF2 (%s) is not accessible", config.vcf2)
+        return False
+    if os.path.exists(config.reference) is False:
+        logger.error("Reference FASTA file (%s) is not accessible", config.reference)
+        return False
+    reference_index = config.reference + ".fai"
+    if os.path.exists(reference_index) is False:
+        logger.error("Reference FASTA file (%s) is not indexed", reference_index)
+        return False
+    if config.reference2 is not None:
+        if os.path.exists(config.reference2) is False:
+            logger.error("Reference2 FASTA file (%s) is not accessible", config.reference2)
+            return False
+        reference_index = config.reference2 + ".fai"
+        if os.path.exists(reference_index) is False:
+            logger.error("Reference 2 FASTA file (%s) is not indexed", reference_index)
+            return False
+    if config.chromosome_map is not None:
+        if os.path.exists(config.chromosome_map) is False:
+            logger.error("Chromosome map (%s) could not be read", config.chromosome_map)
+            return False
+    # If reference2, vcf2, or chromosome-map is specified, make sure all are specified
+    if config.reference2 is not None or config.vcf2 is not None or \
+       config.chromosome_map is not None:
+        if config.reference2 is None:
+            logger.error("Reference2 must be specified if vcf2 or chromosome-map is specified")
+        elif config.vcf2 is None:
+            logger.error("vcf2 must be speicfied if reference2 or chromosome-map is specified")
+        elif config.chromosome_map is None:
+            logger.error("Chromosome map must be specified is referenc2 or vcf2 is specified")
+        else:
+            return False
+    if os.path.isdir(config.output_dir) is False:
+        logger.error("Output directory (%s) does not exist", config.output_dir)
+        return False
+    if config.caller == "freebayes" and config.freebayes_path is None:
+        logger.error("Freebayes-path must be set when caller is Freebayes")
+        return False
+    return True
+
 def compareSamples(sampleSet1, sampleSet2, config):
     A_BIT_LOW = """the number of comparable genomic loci is a bit low.
 Try using a different variants list (--VCF) file which have more appropriate
@@ -698,8 +557,8 @@ CONCLUSION:
           ct_common, comm_hom_ct, comm_het_ct, ct_diff, diff_het, diff_hom_het,
           diff_1sub2, diff_het_hom, diff_hom, diff_2sub1, total_compared,
           frac_common, ct_common, total_compared, judgement)
-            short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t 
-            Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t 
+            short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t
+            Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t
             1sub-2het\t Conclusion
             %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % (sample1["name"],
                    sample2["name"], config.dp_threshold, frac_common, ct_common, comm_hom_ct, comm_het_ct,
@@ -733,80 +592,90 @@ CONCLUSION:
                 fout.write("\t" + s)
             fout.write("\n")
 
-def parseArguments(argv):
-    parser = argparse.ArgumentParser(description="Compare two sets cohorts of bam files \
-        to see if they are from the same samples, using frequently occuring SNPs \
-        reported in the 1000Genome database")
-    parser.add_argument('--log-level', help="Prints warnings to console by default",
-                        default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
+    logger.info("Genotyping {}".format(sample))
 
-    parser_grp1 = parser.add_argument_group("Required")
-    parser_grp1.add_argument("--set1", "-S1", required=True, help="First set of samples")
-    parser_grp1.add_argument("--set2", "-S2", required=True, help="Second set of samples")
+    deleteBam = False
+    outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
+    if os.path.exists(outputVcf) is False:
+        ''' Download the BAM file and index if they are not local '''
+        if bamFile.startswith("s3://"):
+            localBamFile, localBamIndex = downloadBAMFile(bamFile, config)
+            deleteBam = True
+        else:
+            localBamFile = os.path.abspath(bamFile)
 
-    parser_grp2 = parser.add_argument_group("Directories")
-    parser_grp2.add_argument("--cache-dir", "-CD", required=False, default="./cache",
-                             help="Specify directory for cached data. (Default: ./cache)")
-    parser_grp2.add_argument("--scratch-dir", "-SD", required=False, default="/scratch",
-                             help="Specify scratch directory. (Default: /scratch)")
+        ''' Make sure BAM and reference have matching chromosomes '''
+        logger.debug("{}: Getting BAM chromosomes".format(sample))
+        bam_chroms = get_chrom_names_from_BAM(localBamFile)
+        logger.debug("BAM chromosomes: %s", bam_chroms)
 
-    parser_grp3 = parser.add_argument_group("Genotyper")
-    parser_grp3.add_argument("--caller", "-CL", required=False, default="freebayes",
-                             choices=('gatk', 'freebayes', 'varscan'),
-                             help="Specify which caller to use (default = 'freebayes')")
-    parser_grp3.add_argument("--dp-threshold",   "-DP", required=False, default=15, type=int,
-                             help="Minimum required depth for comparing variants")
-    parser_grp3.add_argument("--number_of_snps", "-N", required=False, type=int,
-                             help="Number of SNPs to compare.")
-    parser_grp3.add_argument("--max-jobs", required=False, default=1, type=int,
-                             help="Maximum number of parallel genotyping jobs (Default: 1)")
+        logger.debug("{}: Getting reference {} chromosomes".format(sample, reference))
+        REF_CHROMS = get_chrom_names_from_REF(reference)
+        logger.debug("Reference chromosomes: %s", REF_CHROMS)
 
-    parser_grp4 = parser.add_argument_group("Reference")
-    parser_grp4.add_argument("--vcf", "-V",  required=True,
-                             help="VCF file containing SNPs to check (default can be specified \
-                                  in config file instead)")
-    parser_grp4.add_argument("--vcf2", "-V2",  default=None,
-                             help="VCF file containing SNPs to check (default can be specified \
-                                  in config file instead) when using reference2")
-    parser_grp4.add_argument("--reference", "-R", required=True,
-                             help="Reference FASTA File (indexed with samtools faidx) for set1 or both sets")
-    parser_grp4.add_argument("--reference2", "-R2", default=None,
-                             help="Reference FASTA File (indexed with samtools faidx) for set2")
-    parser_grp4.add_argument("--chromosome-map", "-CM", default=None,
-                             help="Chromosome mapping, if two reference are used")
+        logger.debug("{}: Comparing BAM and reference chromsomes".format(sample))
+        if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
+            bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
+            logger.error("Sample %s contains chromosomes not in reference %s: %s",
+                         sample, reference, bamREF_dff)
+            exit(1)
 
-    parser_grp5 = parser.add_argument_group("Freebayes Settings")
-    parser_grp5.add_argument("--freebayes-path", required=False, default="freebayes",
-                             help="Path to freebayes binary (if not in PATH")
+        ''' Make sure the VCF file and the BAM file have matching chromosome names '''
+        logger.debug("{}: Checking VCF {}".format(sample, vcf))
+        VCF_chroms = get_chrom_names_from_VCF(vcf)
+        logger.debug("VCF chromosomes: %s", VCF_chroms)
 
-    parser_grp7 = parser.add_argument_group("Paths")
-    parser_grp7.add_argument("--aws-path", required=False, default="/usr/bin/aws", help="Specify path to aws cli")
-    parser_grp7.add_argument("--samtools-path", required=False, default="samtools", help="Specify path to samtools")
+        if set(VCF_chroms).issubset(set(bam_chroms)) == False:
+            bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
+            logger.error("Sample %s contains chromosomes not in VCF %s: %s",
+                         sample, vcf, bamVCF_diff)
+            exit(1)
 
-    parser_grp8 = parser.add_argument_group("Output")
-    parser_grp8.add_argument("--output-dir", "-O", required=False, default="./cohort-matcher-output",
-                             help="Specify output directory for sample comparisons (Default: ./cohort-matcher-output)")
-    parser_grp8.add_argument("--short-output", "-so", required=False, default=False, action="store_true",
-                             help="Short output format (Default: False")
-    parser_grp8.add_argument("--report-file", required=False, default="cohort-matcher-results.txt",
-                             help="Specify name of similarity matrix file (Default: ./cohort-master-results.txt)")
-    '''
-    # Freebayes options
-    parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
-                             action="store_true", help="Use --targets option for Freebayes.")
-    # GATK options
-    parser_grp3.add_argument("--gatk-mem-gb" ,   "-GM", required=False,
-                             type=int, help="Specify Java heap size for GATK (GB, int)")
-    parser_grp3.add_argument("--gatk-nt" ,   "-GT", required=False,
-                             type=int, help="Specify number of threads for GATK UnifiedGenotyper (-nt option)")
-    # VarScan Options
-    parser_grp3.add_argument("--varscan-mem-gb", "-VM", required=False,
-                             type=int, help="Specify Java heap size for VarScan2 (GB, int)")
-    '''
-    args = parser.parse_args(argv)
-    return args
+        if config.caller == 'freebayes':
+            logger.debug("{}: Calling freebayes".format(sample))
+            cmd = [config.freebayes_path, "--fasta-reference", reference, "--targets",
+                   intervalsFile, "--no-indels", "--min-coverage", str(config.dp_threshold),
+                   "--report-all-haplotype-alleles", "--report-monomorphic", "--vcf",
+                   outputVcf, localBamFile]
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = p.communicate()
+            p.wait()
+            if p.returncode != 0:
+                logger.error("Error executing {}".format(' '.join(cmd)))
+                os.remove(outputVcf)
+                exit(1)
+            if os.path.exists(outputVcf) == False:
+                logger.error("Output VCF file, {}, could not be found in cache.".format(outputVcf))
+                exit(1)
+        else:
+            logger.error("other callers not yet supported")
+            exit(1)
+            
+    ''' Convert the vcf to tsv '''
+    logger.debug("{}: Convert VCF to TSV".format(sample))
+    out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
+    if os.path.exists(out_tsv) == False:
+        VCFtoTSV(outputVcf, out_tsv, config.caller)
 
-# test
+    if deleteBam == True:
+        os.remove(localBamFile)
+        os.remove(localBamIndex)
+
+    logger.debug("{}: Done".format(sample))
+    return None
+
+def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
+    pool = multiprocessing.Pool(config.max_jobs)
+    for sampleIndex in range(len(sampleSet)):
+        sample = sampleSet[sampleIndex]
+        tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
+        if os.path.exists(tsvFile) is False:
+            pool.apply_async(genotypeSample, (sample["name"], sample["bam"], reference,
+                                              vcf, intervalsFile, config))
+    pool.close()
+    pool.join()
+
 def main(argv):
     config = parseArguments(argv)
     logging.basicConfig(level=config.log_level)
@@ -839,6 +708,140 @@ def main(argv):
 
     compareSamples(sampleSet1, sampleSet2, config)
     return 0
+
+def parseArguments(argv):
+    parser = argparse.ArgumentParser(description="Compare two sets cohorts of bam files \
+        to see if they are from the same samples, using frequently occuring SNPs \
+        reported in the 1000Genome database")
+    parser.add_argument('--log-level', help="Prints warnings to console by default",
+                        default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+
+    parser_grp1 = parser.add_argument_group("Required")
+    parser_grp1.add_argument("--set1", "-S1", required=True, help="First set of samples")
+    parser_grp1.add_argument("--set2", "-S2", required=True, help="Second set of samples")
+
+    parser_grp2 = parser.add_argument_group("Directories")
+    parser_grp2.add_argument("--cache-dir", "-CD", required=False, default="./cache",
+                             help="Specify directory for cached data. (Default: ./cache)")
+    parser_grp2.add_argument("--scratch-dir", "-SD", required=False, default="/scratch",
+                             help="Specify scratch directory. (Default: /scratch)")
+
+    parser_grp3 = parser.add_argument_group("Genotyper")
+    parser_grp3.add_argument("--caller", "-CL", required=False, default="freebayes",
+                             choices=('gatk', 'freebayes', 'varscan'),
+                             help="Specify which caller to use (default = 'freebayes')")
+    parser_grp3.add_argument("--dp-threshold", "-DP", required=False, default=15, type=int,
+                             help="Minimum required depth for comparing variants")
+    parser_grp3.add_argument("--number_of_snps", "-N", required=False, type=int,
+                             help="Number of SNPs to compare.")
+    parser_grp3.add_argument("--max-jobs", required=False, default=1, type=int,
+                             help="Maximum number of parallel genotyping jobs (Default: 1)")
+
+    parser_grp4 = parser.add_argument_group("Reference")
+    parser_grp4.add_argument("--vcf", "-V", required=True,
+                             help="VCF file containing SNPs to check (default can be specified \
+                                  in config file instead)")
+    parser_grp4.add_argument("--vcf2", "-V2", default=None,
+                             help="VCF file containing SNPs to check (default can be specified \
+                                  in config file instead) when using reference2")
+    parser_grp4.add_argument("--reference", "-R", required=True,
+                             help="Reference FASTA File (indexed with samtools faidx) for set1 \
+                             or both sets")
+    parser_grp4.add_argument("--reference2", "-R2", default=None,
+                             help="Reference FASTA File (indexed with samtools faidx) for set2")
+    parser_grp4.add_argument("--chromosome-map", "-CM", default=None,
+                             help="Chromosome mapping, if two reference are used")
+
+    parser_grp5 = parser.add_argument_group("Freebayes Settings")
+    parser_grp5.add_argument("--freebayes-path", required=False, default="freebayes",
+                             help="Path to freebayes binary (if not in PATH")
+
+    parser_grp7 = parser.add_argument_group("Paths")
+    parser_grp7.add_argument("--aws-path", required=False, default="/usr/bin/aws",
+                             help="Specify path to aws cli")
+    parser_grp7.add_argument("--samtools-path", required=False, default="samtools",
+                             help="Specify path to samtools")
+
+    parser_grp8 = parser.add_argument_group("Output")
+    parser_grp8.add_argument("--output-dir", "-O", required=False,
+                             default="./cohort-matcher-output",
+                             help="Specify output directory for sample comparisons \
+                             (Default: ./cohort-matcher-output)")
+    parser_grp8.add_argument("--short-output", "-so", required=False, default=False,
+                             action="store_true", help="Short output format (Default: False")
+    parser_grp8.add_argument("--report-file", required=False, default="cohort-matcher-results.txt",
+                             help="Specify name of similarity matrix file \
+                             (Default: ./cohort-master-results.txt)")
+    '''
+    # Freebayes options
+    parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
+                             action="store_true", help="Use --targets option for Freebayes.")
+    # GATK options
+    parser_grp3.add_argument("--gatk-mem-gb" ,   "-GM", required=False,
+                             type=int, help="Specify Java heap size for GATK (GB, int)")
+    parser_grp3.add_argument("--gatk-nt" ,   "-GT", required=False,
+                             type=int, help="Specify number of threads for GATK UnifiedGenotyper \
+                             (-nt option)")
+    # VarScan Options
+    parser_grp3.add_argument("--varscan-mem-gb", "-VM", required=False,
+                             type=int, help="Specify Java heap size for VarScan2 (GB, int)")
+    '''
+    args = parser.parse_args(argv)
+    return args
+
+def readSamples(sampleSheetFile):
+    '''
+    readSamples reads in a sampleSheetFile consisting of two columns:
+    name and bamfile
+    '''
+    if os.path.isfile(sampleSheetFile) is False:
+        logger.error("%s does not exist", sampleSheetFile)
+        return False
+    logger.info("Reading %s", sampleSheetFile)
+    samples = []
+    with open(sampleSheetFile, 'r') as f:
+        for line in f:
+            line = line.rstrip('\r\n')
+            if len(line) == 0 or line.startswith('#'):
+                continue
+
+            fields = line.split('\t')
+            if len(fields) != 2:
+                logger.error("Expect 2 fields (sampleName, bamFile) but encountered %d",
+                             len(fields))
+                return False
+
+            sampleBamfile = fields[1]
+            sample = {"name": fields[0],
+                      "bam": fields[1]}
+            samples.append(sample)
+    return samples
+
+def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
+    '''
+    Convert a vcf file to a 3-column interval/bed file
+    '''
+    vcf_read = vcf.Reader(open(vcfFile, "r"))
+    fout = open(bedFile, "w")
+    for var in vcf_read:
+        # intervals format
+        chrom_ = var.CHROM
+        if cmap != None:
+            if var.CHROM not in cmap:
+                continue
+            else:
+                chrom_ = cmap[var.CHROM]
+        if format == "gatk" or format == "varscan":
+            start_pos = var.POS - window
+            end_pos = start_pos + window
+            fout.write("%s:%d-%d\n" % (chrom_, start_pos, end_pos))
+        # BED format
+        elif format == "bed" or format == "freebayes":
+            start_pos = var.POS - window - 1
+            end_pos = start_pos + window + 1
+            fout.write("%s\t%d\t%d\n" % (chrom_, start_pos, end_pos))
+    fout.close()
+    return
 
 if __name__ == "__main__":
     main(sys.argv[1:])
