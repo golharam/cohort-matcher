@@ -14,7 +14,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# test
 def checkConfig(config):
     '''
     checkConfig makes sure all the parameters specified are valid
@@ -69,7 +68,6 @@ def checkConfig(config):
         return False
     return True
 
-# test
 def readSamples(sampleSheetFile):
     if os.path.isfile(sampleSheetFile) is False:
         logger.error("%s does not exist", sampleSheetFile)
@@ -94,7 +92,6 @@ def readSamples(sampleSheetFile):
             samples.append(sample)
     return samples
 
-# test
 def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
     vcf_read = vcf.Reader(open(vcfFile, "r"))
     fout = open(bedFile, "w")
@@ -260,7 +257,6 @@ def get_chrom_names_from_VCF(vcf_file):
                 chrom_list.append(vcfRecord.CHROM)
     return chrom_list
 
-# test
 def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
     logger.info("Genotyping {}".format(sample))
 
@@ -392,7 +388,6 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
         print "{}: Done".format(sample)
     return None
 
-# test
 def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
     num_workers = multiprocessing.cpu_count()
     pool = multiprocessing.Pool(config.max_jobs)
@@ -740,7 +735,6 @@ CONCLUSION:
                 fout.write("\t" + s)
             fout.write("\n")
 
-# test
 def parseArguments(argv):
     parser = argparse.ArgumentParser(description="Compare two sets cohorts of bam files \
         to see if they are from the same samples, using frequently occuring SNPs \
