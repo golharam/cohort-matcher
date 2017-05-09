@@ -4,7 +4,7 @@ from mock import patch, MagicMock, mock
 from tempfile import NamedTemporaryFile
 import os
 import filecmp
-from cohort_matcher import checkConfig, main, parseArguments, readSamples, vcfToIntervals
+from cohort_matcher import checkConfig, main, parseArguments, readSamples, vcfToIntervals, genotypeSamples
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
@@ -21,8 +21,25 @@ class TestCohortMatcher(unittest.TestCase):
     def test_compareSamples(self):
         self.skipTest("not yet implemented")
 
-    def test_genotypeSamples(self):
-        self.skipTest("not yet implemented")
+    @patch('multiprocessing.cpu_count')
+    @patch('multiprocessing.Pool')
+    @patch('os.path.join')
+    @patch('os.path.exists')
+    def test_genotypeSamples(self, mock_exists, mock_pathjoin, mock_pool, mock_cpucount):
+        # Set up test parameters
+        sampleSet = [{'name': 'sample1', 'bam': 'sample1.bam'},
+                     {'name': 'sample2', 'bam': 'sample2.bam'}]
+        # Set up supporting mocks
+        mock_cpucount.return_value = 1
+        pool = MagicMock(name="pool")
+        mock_pool.return_value = pool
+
+        mock_exists.side_effect = [False, True]
+        # Test
+        genotypeSamples(sampleSet, MagicMock(name='reference'), MagicMock(name='vcf'),
+                        MagicMock(name='intervalsFile'), MagicMock(name='config'))
+        # Check results
+        pool.apply_async.assert_called_once()
 
     @patch('cohort_matcher.parseArguments')
     @patch('cohort_matcher.checkConfig')

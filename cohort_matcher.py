@@ -389,9 +389,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
     return None
 
 def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
-    num_workers = multiprocessing.cpu_count()
     pool = multiprocessing.Pool(config.max_jobs)
-    jobs = []
     for sampleIndex in range(len(sampleSet)):
         sample = sampleSet[sampleIndex]
         tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
