@@ -15,241 +15,6 @@ from fisher import pvalue
 
 logger = logging.getLogger(__name__)
 
-
-
-
-
-def VCFtoTSV(invcf, outtsv, caller):
-    fout = open(outtsv, "w")
-    vcf_in = vcf.Reader(open(invcf, "r"))
-    var_ct = 0
-    if caller == "gatk" or caller == "varscan":
-        fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AD", "GT"]
-    elif caller == "freebayes":
-        fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AO", "GT"]
-    fout.write("%s\n" % "\t".join(fields_to_extract))
-    for var in vcf_in:
-
-        chrom_ = var.CHROM
-        pos_ = str(var.POS)
-        ref_ = var.REF
-        qual_ = str(var.QUAL)
-        if caller == "varscan":
-            qual_ = str(var.samples[0]["GQ"])
-
-        dp_ = "0"
-        ad_or_ao = "NA"
-        ad_str = "NA"
-        gt_ = "NA"
-        alt_str = ""
-
-        if var.samples[0].called == False:
-            continue
-
-        # usually need to bypass indels, however,
-        # homozygous REF is considered indel by pyvcf... WTF?
-        if var.is_monomorphic:
-            alt_str = "."
-            gt_ = "%s/%s" % (ref_, ref_)
-            if caller == "freebayes":
-                dp_ = var.samples[0].data.DP
-                ro_ = var.samples[0].data.RO
-                ad_str = str(dp_ - ro_)
-            elif caller == "gatk":
-                dp_ = var.samples[0].data.DP
-                ad_str = "0"
-            elif caller == "varscan":
-                dp_ = var.INFO["ADP"]
-            dp_ = str(dp_)
-        else:
-            alt_ = var.ALT[0]
-            alt_str = "."
-            if alt_ != None:
-                alt_str = alt_.sequence
-            if caller == "freebayes" or caller == "gatk":
-                dp_ = str(var.INFO["DP"])
-            else:
-                dp_ = str(var.INFO["ADP"])
-
-            gt_ = var.samples[0].gt_bases
-
-            if caller == "gatk":
-                ad_ = var.samples[0]["AD"]
-                for a_ in ad_:
-                    ad_str += ",%d" % a_
-                ad_str = ad_str[1:]
-            elif caller == "varscan":
-                ad_str = str(var.samples[0]["AD"])
-            else:
-                ad_str = str(var.samples[0]["AO"])
-
-        if ad_str == "NA":
-            ad_str = "0"
-
-        data_bits = [chrom_, pos_, ref_, alt_str, qual_, dp_, ad_str, gt_]
-        fout.write("%s\n" % "\t".join(data_bits))
-        var_ct += 1
-    fout.close()
-    return var_ct
-
-def isFileInAmazon(srcFile, config):
-    cmd = [config.aws_path, "s3", "ls", srcFile]
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    p.wait()
-    lines = out.splitlines()
-    for line in lines:
-        fields = line.split()
-        if fields[3] == os.path.basename(srcFile):
-            return True
-    return False
-
-def downloadBAMFile(bamFile, config):
-    localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
-    if os.path.exists(localBamFile):
-        print "Using cached bam file: {}".format(localBamFile)
-    else:
-        if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
-            print "File does not exist in Amazon."
-            return None
-    deleteBam = True
-
-    ''' If the index is already downloaded, use it '''
-    bamIndex1 = bamFile.rstrip(".bam") + ".bai"
-    bamIndex2 = bamFile + ".bai"
-    localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
-    localBamIndex2 = localBamFile + ".bai"
-    localBamIndex = ''
-
-    if os.path.exists(localBamIndex1):
-        localBamIndex = localBamIndex1
-    elif os.path.exists(localBamIndex2):
-        localBamIndex = localBamIndex2
-    else:
-        ''' Else, try to download index '''
-        if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
-            localBamIndex = localBamIndex1
-        else:
-            ''' Try to download index 2 '''
-            if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
-                localBamIndex = localBamIndex2
-            else:
-                print "Could not find matching bam index.  Generating."
-                if len(config.samtools_path) == 0:
-                    print "samtools path not specified"
-                    exit(1)
-                cmd = [config.samtools_path, 'index', localBamFile]
-                p = subprocess.Popen(cmd)
-                p.wait()
-                if p.returncode != 0:
-                    print "Unable to generated BAM index"
-                    exit(1)
-                localBamIndex = localBamIndex2
-    return localBamFile
-
-def downloadFileFromAmazon(srcFile, destDirectory, config):
-    if len(config.aws_path) == 0:
-        print "AWS Path not set"
-        exit(1)
-
-    if isFileInAmazon(srcFile, config) == False:
-        print "File (%s) is not accessible" % srcFile
-        return None
-
-    cmd = [config.aws_path, "s3", "cp", srcFile, destDirectory]
-    logger.info("Downloading file: {}".format(srcFile))
-    if config.log_level == DEBUG:
-        p = subprocess.Popen(cmd)
-    else:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-    p.wait()
-
-    if p.returncode != 0:
-        print "Error downloading file {}".format(srcFile)
-        return None
-
-    localFile = os.path.join(destDirectory, os.path.basename(srcFile))
-    if os.access(localFile, os.R_OK) == False:
-        print "{} is not accessible.".format(localFile)
-        return None
-
-    return localFile
-
-# Get list of chromosome names from the BAM file
-def get_chrom_names_from_BAM(bam_file):
-    chrom_list = []
-    inbam = pysam.AlignmentFile(bam_file, "rb")
-    header_sq = inbam.header["SQ"]
-    for sq_ in header_sq:
-        chrom_list.append(sq_["SN"])
-    return chrom_list
-
-def get_chrom_names_from_REF(ref_fasta):
-    ref_idx = ref_fasta + ".fai"
-    chrom_list = []
-    fin = open(ref_idx, "r")
-    for line in fin:
-        if line.strip() == "":
-            continue
-        chrom_list.append(line.strip().split()[0])
-    return chrom_list
-
-def get_chrom_names_from_VCF(vcf_file):
-    chrom_list = []
-    with open(vcf_file, "r") as fin:
-        vcf_reader = vcf.Reader(fin)
-        for vcfRecord in vcf_reader:
-            if chrom_list.count(vcfRecord.CHROM) == 0:
-                chrom_list.append(vcfRecord.CHROM)
-    return chrom_list
-
-def get_chrom_data_from_map(chrom_map_file):
-    chrom_ct = 0
-    default_chroms = []
-    alternate_chroms = []
-    def_to_alt = {}
-    alt_to_def = {}
-
-    with open(chrom_map_file, 'r') as fin:
-        header = fin.readline()
-        for line in fin:
-            if line.strip() == "":
-                continue
-            chrom_ct += 1
-            bits = line.strip().split()
-            default_chroms.append(bits[0])
-            alternate_chroms.append(bits[1])
-            def_to_alt[bits[0]] = bits[1]
-            alt_to_def[bits[1]] = bits[0]
-    return default_chroms, alternate_chroms, def_to_alt, alt_to_def
-
-def same_gt(gt1, gt2):
-    if gt1 == gt2:
-        return True
-    else:
-        gt1_ = sorted(gt1.split("/"))
-        gt2_ = sorted(gt2.split("/"))
-        if gt1_ == gt2_:
-            return True
-        else:
-            return False
-
-def is_hom(gt):
-    gt_ = gt.split("/")
-    if gt_[0] == gt_[1]:
-        return True
-    else:
-        return False
-
-def is_subset(hom_gt, het_gt):
-    gt_hom = hom_gt.split("/")[0]
-    if gt_hom in het_gt:
-        return True
-    else:
-        return False
-
-########################################################################################
 def checkConfig(config):
     '''
     checkConfig makes sure all the parameters specified are valid
@@ -304,6 +69,34 @@ def checkConfig(config):
         return False
     return True
 
+def checkReference(sample, localBamFile, reference, vcf):
+    logger.debug("{}: Getting BAM chromosomes".format(sample))
+    bam_chroms = get_chrom_names_from_BAM(localBamFile)
+    logger.debug("BAM chromosomes: %s", bam_chroms)
+
+    logger.debug("{}: Getting reference {} chromosomes".format(sample, reference))
+    REF_CHROMS = get_chrom_names_from_REF(reference)
+    logger.debug("Reference chromosomes: %s", REF_CHROMS)
+
+    logger.debug("{}: Comparing BAM and reference chromsomes".format(sample))
+    if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
+        bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
+        logger.error("Sample %s contains chromosomes not in reference %s: %s",
+                     sample, reference, bamREF_dff)
+        return False
+
+    ''' Make sure the VCF file and the BAM file have matching chromosome names '''
+    logger.debug("{}: Checking VCF {}".format(sample, vcf))
+    VCF_chroms = get_chrom_names_from_VCF(vcf)
+    logger.debug("VCF chromosomes: %s", VCF_chroms)
+
+    if set(VCF_chroms).issubset(set(bam_chroms)) == False:
+        bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
+        logger.error("Sample %s contains chromosomes not in VCF %s: %s",
+                     sample, vcf, bamVCF_diff)
+        return False
+    return True
+    
 def compareSamples(sampleSet1, sampleSet2, config):
     A_BIT_LOW = """the number of comparable genomic loci is a bit low.
 Try using a different variants list (--VCF) file which have more appropriate
@@ -420,7 +213,7 @@ genomic positions for comparison."""
                 gt1 = bam1_gt[pos_]
                 gt2 = bam2_gt[pos_]
                 # if genotypes are the same
-                if same_gt(gt1, gt2):
+                if is_same_gt(gt1, gt2):
                     ct_common += 1
                     if is_hom(gt1):
                         comm_hom_ct += 1
@@ -592,44 +385,144 @@ CONCLUSION:
                 fout.write("\t" + s)
             fout.write("\n")
 
+def downloadBAMFile(bamFile, config):
+    localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
+    if os.path.exists(localBamFile):
+        print "Using cached bam file: {}".format(localBamFile)
+    else:
+        if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
+            print "File does not exist in Amazon."
+            return None
+    deleteBam = True
+
+    ''' If the index is already downloaded, use it '''
+    bamIndex1 = bamFile.rstrip(".bam") + ".bai"
+    bamIndex2 = bamFile + ".bai"
+    localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
+    localBamIndex2 = localBamFile + ".bai"
+    localBamIndex = ''
+
+    if os.path.exists(localBamIndex1):
+        localBamIndex = localBamIndex1
+    elif os.path.exists(localBamIndex2):
+        localBamIndex = localBamIndex2
+    else:
+        ''' Else, try to download index '''
+        if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
+            localBamIndex = localBamIndex1
+        else:
+            ''' Try to download index 2 '''
+            if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
+                localBamIndex = localBamIndex2
+            else:
+                print "Could not find matching bam index.  Generating."
+                if len(config.samtools_path) == 0:
+                    print "samtools path not specified"
+                    exit(1)
+                cmd = [config.samtools_path, 'index', localBamFile]
+                p = subprocess.Popen(cmd)
+                p.wait()
+                if p.returncode != 0:
+                    print "Unable to generated BAM index"
+                    exit(1)
+                localBamIndex = localBamIndex2
+    return localBamFile
+
+def downloadFileFromAmazon(srcFile, destDirectory, config):
+    if len(config.aws_path) == 0:
+        print "AWS Path not set"
+        exit(1)
+
+    if isFileInAmazon(srcFile, config) == False:
+        print "File (%s) is not accessible" % srcFile
+        return None
+
+    cmd = [config.aws_path, "s3", "cp", srcFile, destDirectory]
+    logger.info("Downloading file: {}".format(srcFile))
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    p.wait()
+
+    if p.returncode != 0:
+        print "Error downloading file {}".format(srcFile)
+        return None
+
+    localFile = os.path.join(destDirectory, os.path.basename(srcFile))
+    if os.access(localFile, os.R_OK) == False:
+        print "{} is not accessible.".format(localFile)
+        return None
+
+    return localFile
+
+def get_chrom_names_from_BAM(bam_file):
+    ''' Get list of chromosome names from the BAM file '''
+    chrom_list = []
+    inbam = pysam.AlignmentFile(bam_file, "rb")
+    header_sq = inbam.header["SQ"]
+    for sq_ in header_sq:
+        chrom_list.append(sq_["SN"])
+    return chrom_list
+
+def get_chrom_names_from_REF(ref_fasta):
+    ''' Get list of chromosome names from the reference file '''
+    ref_idx = ref_fasta + ".fai"
+    chrom_list = []
+    fin = open(ref_idx, "r")
+    for line in fin:
+        if line.strip() == "":
+            continue
+        chrom_list.append(line.strip().split()[0])
+    return chrom_list
+
+def get_chrom_data_from_map(chrom_map_file):
+    chrom_ct = 0
+    default_chroms = []
+    alternate_chroms = []
+    def_to_alt = {}
+    alt_to_def = {}
+
+    with open(chrom_map_file, 'r') as fin:
+        header = fin.readline()
+        for line in fin:
+            if line.strip() == "":
+                continue
+            chrom_ct += 1
+            bits = line.strip().split()
+            default_chroms.append(bits[0])
+            alternate_chroms.append(bits[1])
+            def_to_alt[bits[0]] = bits[1]
+            alt_to_def[bits[1]] = bits[0]
+    return default_chroms, alternate_chroms, def_to_alt, alt_to_def
+
+def get_chrom_names_from_VCF(vcf_file):
+    ''' Get list of chromosome names from the VCF file '''
+    chrom_list = []
+    with open(vcf_file, "r") as fin:
+        vcf_reader = vcf.Reader(fin)
+        for vcfRecord in vcf_reader:
+            if chrom_list.count(vcfRecord.CHROM) == 0:
+                chrom_list.append(vcfRecord.CHROM)
+    return chrom_list
+
 def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
+    '''
+    This function calls the actual genotype to generate a vcf, then 
+    converts the vcf to tsv file.
+    '''
     logger.info("Genotyping {}".format(sample))
 
     deleteBam = False
     outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
     if os.path.exists(outputVcf) is False:
-        ''' Download the BAM file and index if they are not local '''
+        # Download the BAM file and index if they are not local
         if bamFile.startswith("s3://"):
             localBamFile, localBamIndex = downloadBAMFile(bamFile, config)
             deleteBam = True
         else:
             localBamFile = os.path.abspath(bamFile)
 
-        ''' Make sure BAM and reference have matching chromosomes '''
-        logger.debug("{}: Getting BAM chromosomes".format(sample))
-        bam_chroms = get_chrom_names_from_BAM(localBamFile)
-        logger.debug("BAM chromosomes: %s", bam_chroms)
-
-        logger.debug("{}: Getting reference {} chromosomes".format(sample, reference))
-        REF_CHROMS = get_chrom_names_from_REF(reference)
-        logger.debug("Reference chromosomes: %s", REF_CHROMS)
-
-        logger.debug("{}: Comparing BAM and reference chromsomes".format(sample))
-        if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
-            bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
-            logger.error("Sample %s contains chromosomes not in reference %s: %s",
-                         sample, reference, bamREF_dff)
-            exit(1)
-
-        ''' Make sure the VCF file and the BAM file have matching chromosome names '''
-        logger.debug("{}: Checking VCF {}".format(sample, vcf))
-        VCF_chroms = get_chrom_names_from_VCF(vcf)
-        logger.debug("VCF chromosomes: %s", VCF_chroms)
-
-        if set(VCF_chroms).issubset(set(bam_chroms)) == False:
-            bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
-            logger.error("Sample %s contains chromosomes not in VCF %s: %s",
-                         sample, vcf, bamVCF_diff)
+        # Make sure BAM and reference have matching chromosomes
+        if checkReference(sample, localBamFile, reference, vcf) is False:
             exit(1)
 
         if config.caller == 'freebayes':
@@ -642,7 +535,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             out, err = p.communicate()
             p.wait()
             if p.returncode != 0:
-                logger.error("Error executing {}".format(' '.join(cmd)))
+                logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out, err)
                 os.remove(outputVcf)
                 exit(1)
             if os.path.exists(outputVcf) == False:
@@ -652,12 +545,13 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             logger.error("other callers not yet supported")
             exit(1)
             
-    ''' Convert the vcf to tsv '''
+    # Convert the vcf to tsv
     logger.debug("{}: Convert VCF to TSV".format(sample))
     out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
     if os.path.exists(out_tsv) == False:
         VCFtoTSV(outputVcf, out_tsv, config.caller)
 
+    # Delete the bam/bai files if they were downloaded
     if deleteBam == True:
         os.remove(localBamFile)
         os.remove(localBamIndex)
@@ -675,6 +569,43 @@ def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
                                               vcf, intervalsFile, config))
     pool.close()
     pool.join()
+
+def is_hom(gt):
+    gt_ = gt.split("/")
+    if gt_[0] == gt_[1]:
+        return True
+    else:
+        return False
+
+def is_same_gt(gt1, gt2):
+    if gt1 == gt2:
+        return True
+    else:
+        gt1_ = sorted(gt1.split("/"))
+        gt2_ = sorted(gt2.split("/"))
+        if gt1_ == gt2_:
+            return True
+        else:
+            return False
+
+def is_subset(hom_gt, het_gt):
+    gt_hom = hom_gt.split("/")[0]
+    if gt_hom in het_gt:
+        return True
+    else:
+        return False
+
+def isFileInAmazon(srcFile, config):
+    cmd = [config.aws_path, "s3", "ls", srcFile]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    p.wait()
+    lines = out.splitlines()
+    for line in lines:
+        fields = line.split()
+        if fields[3] == os.path.basename(srcFile):
+            return True
+    return False
 
 def main(argv):
     config = parseArguments(argv)
@@ -842,6 +773,82 @@ def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
             fout.write("%s\t%d\t%d\n" % (chrom_, start_pos, end_pos))
     fout.close()
     return
+
+def VCFtoTSV(invcf, outtsv, caller):
+    '''
+    Convert a VCF to TSV
+    '''
+    fout = open(outtsv, "w")
+    vcf_in = vcf.Reader(open(invcf, "r"))
+    var_ct = 0
+    if caller == "gatk" or caller == "varscan":
+        fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AD", "GT"]
+    elif caller == "freebayes":
+        fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AO", "GT"]
+    fout.write("%s\n" % "\t".join(fields_to_extract))
+    for var in vcf_in:
+
+        chrom_ = var.CHROM
+        pos_ = str(var.POS)
+        ref_ = var.REF
+        qual_ = str(var.QUAL)
+        if caller == "varscan":
+            qual_ = str(var.samples[0]["GQ"])
+
+        dp_ = "0"
+        ad_or_ao = "NA"
+        ad_str = "NA"
+        gt_ = "NA"
+        alt_str = ""
+
+        if var.samples[0].called == False:
+            continue
+
+        # usually need to bypass indels, however,
+        # homozygous REF is considered indel by pyvcf... WTF?
+        if var.is_monomorphic:
+            alt_str = "."
+            gt_ = "%s/%s" % (ref_, ref_)
+            if caller == "freebayes":
+                dp_ = var.samples[0].data.DP
+                ro_ = var.samples[0].data.RO
+                ad_str = str(dp_ - ro_)
+            elif caller == "gatk":
+                dp_ = var.samples[0].data.DP
+                ad_str = "0"
+            elif caller == "varscan":
+                dp_ = var.INFO["ADP"]
+            dp_ = str(dp_)
+        else:
+            alt_ = var.ALT[0]
+            alt_str = "."
+            if alt_ != None:
+                alt_str = alt_.sequence
+            if caller == "freebayes" or caller == "gatk":
+                dp_ = str(var.INFO["DP"])
+            else:
+                dp_ = str(var.INFO["ADP"])
+
+            gt_ = var.samples[0].gt_bases
+
+            if caller == "gatk":
+                ad_ = var.samples[0]["AD"]
+                for a_ in ad_:
+                    ad_str += ",%d" % a_
+                ad_str = ad_str[1:]
+            elif caller == "varscan":
+                ad_str = str(var.samples[0]["AD"])
+            else:
+                ad_str = str(var.samples[0]["AO"])
+
+        if ad_str == "NA":
+            ad_str = "0"
+
+        data_bits = [chrom_, pos_, ref_, alt_str, qual_, dp_, ad_str, gt_]
+        fout.write("%s\n" % "\t".join(data_bits))
+        var_ct += 1
+    fout.close()
+    return var_ct
 
 if __name__ == "__main__":
     main(sys.argv[1:])
