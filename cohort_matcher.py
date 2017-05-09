@@ -70,6 +70,9 @@ def checkConfig(config):
     return True
 
 def checkReference(sample, localBamFile, reference, vcf):
+    ''' Make sure the reference used BAM file is the same as
+        the vcf file
+    '''
     logger.debug("{}: Getting BAM chromosomes".format(sample))
     bam_chroms = get_chrom_names_from_BAM(localBamFile)
     logger.debug("BAM chromosomes: %s", bam_chroms)
@@ -98,6 +101,8 @@ def checkReference(sample, localBamFile, reference, vcf):
     return True
     
 def compareSamples(sampleSet1, sampleSet2, config):
+    ''' Compare all the samples against each other '''
+
     A_BIT_LOW = """the number of comparable genomic loci is a bit low.
 Try using a different variants list (--VCF) file which have more appropriate
 genomic positions for comparison."""
