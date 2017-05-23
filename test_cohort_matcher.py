@@ -148,7 +148,8 @@ class TestCohortMatcher(unittest.TestCase):
     def test_vcfToIntervals(self):
         # Set up test parameters
         vcfFile = "hg19.exome.highAF.1511.vcf"
-        bedFile = NamedTemporaryFile(delete=False)
+        bedFile = NamedTemporaryFile()
+        bedFile.close()
         # Set up supporting mocks
         # Test
         vcfToIntervals(vcfFile, bedFile.name)
