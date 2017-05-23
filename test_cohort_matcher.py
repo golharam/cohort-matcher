@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile
 import os
 import filecmp
 from cohort_matcher import checkConfig, main, parseArguments, readSamples, \
-     vcfToIntervals, genotypeSamples, genotypeSample
+     vcfToIntervals, genotypeSamples, genotypeSample, compareSamples
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
@@ -21,7 +21,16 @@ class TestCohortMatcher(unittest.TestCase):
         self.assertTrue(retVal)
 
     def test_compareSamples(self):
-        self.skipTest("not yet implemented")
+        # Set up test parameters
+        sampleSet1 = [{'name': 'sampleA', 'bam': 'sampleA.bam'},
+                      {'name': 'sampleB', 'bam': 'sampleB.bam'}]
+        sampleSet2 = [{'name': 'sample1', 'bam': 'sample1.bam'},
+                      {'name': 'sample2', 'bam': 'sample2.bam'}]
+        config = MagicMock(name="config")
+        # Set up supporting mocks
+        # Test
+        compareSamples(sampleSet1, sampleSet2, config)
+        # Check results
 
     def test_downloadBAMFile(self):
         self.skipTest("not yet implemented")

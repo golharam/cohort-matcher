@@ -1,5 +1,12 @@
-table <- read.table("cohort-matcher-results.txt", header=TRUE, row.names=1)
-rownames(table) <- colnames(table)
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) == 0) {
+  cohort_matcher_results <- "cohort-matcher-results.txt"
+} else {
+  cohort_matcher_results <- args[1]
+}
+paste("Reading", cohort_matcher_results, sep=" ")
+table <- read.table(cohort_matcher_results, header=TRUE, row.names=1)
+#rownames(table) <- colnames(table)
 
 f <- file("topmatches.txt", "w")
 writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
