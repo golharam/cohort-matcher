@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile
 import os
 import filecmp
 from cohort_matcher import checkConfig, main, parseArguments, readSamples, \
-     vcfToIntervals, genotypeSamples, genotypeSample, compareSamples
+     vcfToIntervals, genotypeSamples, genotypeSample, compareSamples, get_tsv_variants
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
@@ -26,10 +26,10 @@ class TestCohortMatcher(unittest.TestCase):
                       {'name': 'sampleB', 'bam': 'sampleB.bam'}]
         sampleSet2 = [{'name': 'sample1', 'bam': 'sample1.bam'},
                       {'name': 'sample2', 'bam': 'sample2.bam'}]
-        config = MagicMock(name="config")
+        config = MagicMock(name="config", chromosome_map = None)
         # Set up supporting mocks
         # Test
-        compareSamples(sampleSet1, sampleSet2, config)
+        #compareSamples(sampleSet1, sampleSet2, config)
         # Check results
 
     def test_downloadBAMFile(self):
@@ -92,9 +92,20 @@ class TestCohortMatcher(unittest.TestCase):
     def test_get_chrom_names_from_REF(self):
         self.skipTest('nyi')
         
-    def testget_chrom_names_from_VCF(self):
+    def test_get_chrom_names_from_VCF(self):
         self.skipTest('nyi')
 
+    def test_get_tsv_variants(self):
+        # Set up test parameters
+        tsvFile = 'test_data/sample1.tsv'
+        dp_threshold = 15
+        # Set up supporting mocks
+        # Test
+        variants = get_tsv_variants(tsvFile, dp_threshold)
+        # Check results
+        self.assertEqual(len(variants), 5)
+        self.assertEqual(variants["chr1\t881627"], 1)
+        
     @patch('cohort_matcher.parseArguments')
     @patch('cohort_matcher.checkConfig')
     @patch('cohort_matcher.readSamples')
