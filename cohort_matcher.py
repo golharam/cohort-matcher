@@ -397,7 +397,7 @@ CONCLUSION:
 def downloadBAMFile(bamFile, config):
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
     if os.path.exists(localBamFile):
-        logger.debug("Using cached bam file: {}".format(localBamFile)
+        logger.debug("Using cached bam file: {}".format(localBamFile))
     else:
         if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
             logger.error("File does not exist in Amazon.")
