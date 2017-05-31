@@ -6,28 +6,33 @@ if (length(args) == 0) {
 }
 paste("Reading", cohort_matcher_results, sep=" ")
 table <- read.table(cohort_matcher_results, header=TRUE, row.names=1)
-#rownames(table) <- colnames(table)
 
-f <- file("topmatches.txt", "w")
-writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
-for (sample in rownames(table)) {
-	sortedTable <- table[order(-table[,sample]),]
-	writeLines(paste(sample, 
-		    rownames(sortedTable)[1],  sortedTable[1,sample],
-		    rownames(sortedTable)[2],  sortedTable[2,sample],
-		    rownames(sortedTable)[3],  sortedTable[3,sample],
-		    rownames(sortedTable)[4],  sortedTable[4,sample],
-		    rownames(sortedTable)[5],  sortedTable[5,sample],
-		    sep="\t"),
-		   f)
+
+# This only works if the row and column names are the same
+reportTopMatches <- function(x, ...) {
+  f <- file("topmatches.txt", "w")
+  writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
+  for (sample in rownames(x)) {
+      # Ihis code assumes the sampelids are the same in the rows and columns,
+      # but this won't be the same when comparing different cohorts.
+  	sortedTable <- x[order(-x[,sample]),]
+  	writeLines(paste(sample, 
+  		    rownames(sortedTable)[1],  sortedTable[1,sample],
+  		    rownames(sortedTable)[2],  sortedTable[2,sample],
+  		    rownames(sortedTable)[3],  sortedTable[3,sample],
+  		    rownames(sortedTable)[4],  sortedTable[4,sample],
+  		    rownames(sortedTable)[5],  sortedTable[5,sample],
+  		    sep="\t"),
+  		   f)
+  }
+  close(f)
 }
-close(f)
 
 # Plot
 # http://www.phaget4.org/R/image_matrix.html
 # https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
 # ----- Define a function for plotting a matrix ----- #
-myImagePlot <- function(x, ...){
+myImagePlot <- function(x, ...) {
   min <- min(x)
   max <- max(x)
   yLabels <- rownames(x)
@@ -94,4 +99,10 @@ myImagePlot <- function(x, ...){
 }
 # ----- END plot function ----- #
 M.table <- as.matrix(table)
-myImagePlot(M.table)#
+
+pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
+paste("Writing", pdfFile, sep=" ")
+pdf(pdfFile)
+myImagePlot(M.table)
+dev.off()
+
