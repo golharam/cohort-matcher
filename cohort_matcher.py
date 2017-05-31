@@ -82,8 +82,8 @@ def checkConfig(config):
         logger.error("Unable to locate caller: %s", config.freebayes_path)
         return False
 
-    if os.path.exists(config.samtools_path) is False:
-        logger.error("Unable to locate samtools: %s", config.samtools_path)
+    if os.path.exists(config.samtools) is False:
+        logger.error("Unable to locate samtools: %s", config.samtools)
         return False
 
     return True
@@ -424,10 +424,10 @@ def downloadBAMFile(bamFile, config):
                 localBamIndex = localBamIndex2
             else:
                 print "Could not find matching bam index.  Generating."
-                if len(config.samtools_path) == 0:
+                if len(config.samtools) == 0:
                     logger.error("samtools path not specified")
                     exit(1)
-                cmd = [config.samtools_path, 'index', localBamFile]
+                cmd = [config.samtools, 'index', localBamFile]
                 p = subprocess.Popen(cmd)
                 p.wait()
                 if p.returncode != 0:
