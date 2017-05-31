@@ -423,10 +423,7 @@ def downloadBAMFile(bamFile, config):
             if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
                 localBamIndex = localBamIndex2
             else:
-                print "Could not find matching bam index.  Generating."
-                if len(config.samtools) == 0:
-                    logger.error("samtools path not specified")
-                    exit(1)
+                logger.debug("Could not find matching bam index.  Generating...")
                 cmd = [config.samtools, 'index', localBamFile]
                 p = subprocess.Popen(cmd)
                 p.wait()
@@ -438,7 +435,7 @@ def downloadBAMFile(bamFile, config):
 
 def downloadFileFromAmazon(srcFile, destDirectory, config):
     if isFileInAmazon(srcFile, config) == False:
-        print "File (%s) is not accessible" % srcFile
+        logger.warn("File (%s) is not accessible", srcFile)
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
@@ -448,12 +445,12 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
     p.wait()
 
     if p.returncode != 0:
-        print "Error downloading file {}".format(srcFile)
+        logger.warn("Error downloading file {}".format(srcFile))
         return None
 
     localFile = os.path.join(destDirectory, os.path.basename(srcFile))
     if os.access(localFile, os.R_OK) == False:
-        print "{} is not accessible.".format(localFile)
+        logger.warn("{} is not accessible.".format(localFile))
         return None
 
     return localFile
