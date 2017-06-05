@@ -400,7 +400,7 @@ def downloadBAMFile(bamFile, config):
         logger.debug("Using cached bam file: {}".format(localBamFile))
     else:
         if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
-            logger.error("File does not exist in Amazon.")
+            logger.error("File does not exist or is inaccessible in Amazon.")
             return None
 
     ''' If the index is already downloaded, use it '''
@@ -435,7 +435,6 @@ def downloadBAMFile(bamFile, config):
 
 def downloadFileFromAmazon(srcFile, destDirectory, config):
     if isFileInAmazon(srcFile, config) == False:
-        logger.warn("File (%s) is not accessible", srcFile)
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
@@ -445,12 +444,10 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
     p.wait()
 
     if p.returncode != 0:
-        logger.warn("Error downloading file {}".format(srcFile))
         return None
 
     localFile = os.path.join(destDirectory, os.path.basename(srcFile))
     if os.access(localFile, os.R_OK) == False:
-        logger.warn("{} is not accessible.".format(localFile))
         return None
 
     return localFile
