@@ -51,7 +51,7 @@ def checkConfig(config):
             logger.error("vcf2 must be specified if reference2 or chromosome-map is specified")
             return False
         elif config.chromosome_map is None:
-            logger.error("Chromosome map must be specified is referenc2 or vcf2 is specified")
+            logger.error("Chromosome map must be specified is reference2 or vcf2 is specified")
             return False
 
         if os.path.exists(config.vcf2) is False:
