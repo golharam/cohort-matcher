@@ -126,11 +126,13 @@ myImagePlot <- function(x, ...) {
   layout(1)
 }
 # ----- END plot function ----- #
-M.table <- as.matrix(table)
 
+paste("Writing top matches in topmatches.txt", sep=" ")
+reportTopMatches(table)
+
+M.table <- as.matrix(table)
 pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
 pdf(pdfFile)
 myImagePlot(M.table)
 dev.off()
-
