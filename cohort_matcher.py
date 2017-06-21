@@ -134,24 +134,32 @@ genomic positions for comparison."""
             ''' Get a list of variants that pass in sample 1 '''
             tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
             var_list = get_tsv_variants(tsv1, config.dp_threshold)
-
             ''' then parse second tsv file to get list of variants that passed in both samples '''
             tsv2 = os.path.join(config.cache_dir, sample2["name"] + ".tsv")
-            with open(tsv2, "r") as fin:
-                for line in fin:
-                    if line.startswith("CHROM\t"):
-                        continue
-                    bits = line.strip("\n").split("\t")
-                    if alternate_chroms is not None:
-                        var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-                    else:
-                        var_ = "\t".join(bits[:2])
-
-                    if var_ in var_list:
-                        var_list[var_] = 2
+            var_list2 = get_tsv_variants(tsv2, config.dp_threshold)
+            for var2 in var_list2:
+                bits = var2.split("\t")
+                if alternate_chroms is not None:
+                    var_ = alt_to_def[bits[0]] + "\t" + bits[1]
+                else:
+                    var_ = var2
+                
+                if var_ in var_list:
+                    var_list[var_] = 2
+            #with open(tsv2, "r") as fin:
+            #    for line in fin:
+            #        if line.startswith("CHROM\t"):
+            #            continue
+            #        bits = line.strip("\n").split("\t")
+            #        if alternate_chroms is not None:
+            #            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
+            #        else:
+            #            var_ = "\t".join(bits[:2])
+            #        if var_ in var_list:
+            #           var_list[var_] = 2
 
             #-------------------------------------------------------------------------------
-            # write out bam1 variants
+            # write out bam1 variants that both samples have in common
             bam1_var = os.path.join(config.scratch_dir, "sample1.variants")
             with open(bam1_var, "w") as fout:
                 with open(tsv1, "r") as fin:
@@ -159,15 +167,14 @@ genomic positions for comparison."""
                         if line.startswith("CHROM\t"):
                             continue
                         bits = line.strip("\n").split("\t")
-                        out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-                                                             bits[3], bits[7])
                         var_ = "\t".join(bits[:2])
-                        if var_ in var_list:
-                            if var_list[var_] == 2:
-                                fout.write(out_line)
+                        if var_ in var_list and var_list[var_] == 2:
+                            out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
+                                                                 bits[3], bits[7])
+                            fout.write(out_line)
 
             #-------------------------------------------------------------------------------
-            # write out bam2 variants
+            # write out bam2 variants that both samples have in common
             bam2_var = os.path.join(config.scratch_dir, "sample2.variants")
             with open(bam2_var, "w") as fout:
                 with open(tsv2, "r") as fin:
@@ -175,13 +182,13 @@ genomic positions for comparison."""
                         if line.startswith("CHROM\t"):
                             continue
                         bits = line.strip("\n").split("\t")
-                        out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-                                                             bits[3], bits[7])
                         if alternate_chroms is not None:
                             var_ = alt_to_def[bits[0]] + "\t" + bits[1]
                         else:
                             var_ = "\t".join(bits[:2])
-                        if var_list.has_key(var_) and var_list[var_] == 2:
+                        if var_ in var_list and var_list[var_] == 2:
+                            out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
+                                                                 bits[3], bits[7])
                             fout.write(out_line)
 
             ''' at this point sample1.variants and sample2.variants should have

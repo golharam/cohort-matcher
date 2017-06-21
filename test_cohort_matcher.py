@@ -20,19 +20,17 @@ class TestCohortMatcher(unittest.TestCase):
         # Check results
         self.assertTrue(retVal)
 
-    @patch('cohort_matcher.get_tsv_variants')
-    def test_compareSamples(self, mock_get_tsv_variants):
+    def test_compareSamples(self):
         # Set up test parameters
-        sampleSet1 = [{'name': 'sampleA', 'bam': 'sampleA.bam'},
-                      {'name': 'sampleB', 'bam': 'sampleB.bam'}]
-        sampleSet2 = [{'name': 'sample1', 'bam': 'sample1.bam'},
-                      {'name': 'sample2', 'bam': 'sample2.bam'}]
-        config = MagicMock(name="config", chromosome_map = None)
+        sampleSet = [{'name': 'A004AX275-001', 'bam': 'sample1.bam'},
+                     {'name': 'A005AX346-001', 'bam': 'sample2.bam'}]
+        config = MagicMock(name="config", dp_threshold=10, chromosome_map=None,
+                           cache_dir='test_data', scratch_dir='/scratch')
         # Set up supporting mocks
-        mock_get_tsv_variants.return_value = [{"chr1\t123": 1},
-                                              {"chr1\t1234": 1}]
+        #mock_get_tsv_variants.return_value = [{"chr1\t123": 1},
+        #                                      {"chr1\t1234": 1}]
         # Test
-        compareSamples(sampleSet1, sampleSet2, config)
+        compareSamples(sampleSet, sampleSet, config)
         # Check results
 
     def test_downloadBAMFile(self):
