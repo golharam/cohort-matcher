@@ -9,7 +9,7 @@ table <- read.table(cohort_matcher_results, header=TRUE, row.names=1)
 
 
 # This only works if the row and column names are the same
-reportTopMatches <- function(x, ...) {
+reportTopMatches_old <- function(x, ...) {
   f <- file("topmatches.txt", "w")
   writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
   for (sample in rownames(x)) {
@@ -24,6 +24,34 @@ reportTopMatches <- function(x, ...) {
   		    rownames(sortedTable)[5],  sortedTable[5,sample],
   		    sep="\t"),
   		   f)
+  }
+  close(f)
+}
+
+reportTopMatch <- function(x, ...) {
+  ## This only returns the TOP match.
+  # Get column index of the max value of each row in x
+  maxcolidx <- max.col(x, "first")
+  # Get the max row value
+  maxcolval <- x[cbind(1:nrow(x), maxcolidx)]
+  # Get the col (sample) names
+  samplenames <- names(x)[maxcolidx]
+  res <- data.frame(samplenames, maxcolval)
+}
+
+reportTopMatches <- function(x, ...) {
+  f <- file("topmatches.txt", "w")
+  writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
+  for (sample in rownames(x)) {
+    sample_matches <- sort(x[sample,], decreasing=TRUE)
+    writeLines(paste(sample,
+                     colnames(sample_matches[1]), sample_matches[1,1],
+                     colnames(sample_matches[2]), sample_matches[1,2],
+                     colnames(sample_matches[3]), sample_matches[1,3],
+                     colnames(sample_matches[4]), sample_matches[1,4],
+                     colnames(sample_matches[5]), sample_matches[1,5],
+                     sep="\t"),
+               f)
   }
   close(f)
 }
@@ -98,11 +126,13 @@ myImagePlot <- function(x, ...) {
   layout(1)
 }
 # ----- END plot function ----- #
-M.table <- as.matrix(table)
 
+paste("Writing top matches in topmatches.txt", sep=" ")
+reportTopMatches(table)
+
+M.table <- as.matrix(table)
 pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
 pdf(pdfFile)
 myImagePlot(M.table)
 dev.off()
-
