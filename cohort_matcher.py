@@ -308,6 +308,7 @@ genomic positions for comparison."""
                     judgement = "BAM FILES ARE FROM THE SAME SOURCE"
                     short_judgement = "SAME"
                 elif frac_common_plus >= 0.95:
+                    short_judgement = "SAME"
                     judgement = "BAM FILES ARE VERY LIKELY FROM THE SAME SOURCE"
                     if allele_subset == "1sub2" or allele_subset == "2sub1":
                         sub_ = allele_subset.split("sub")[0]
