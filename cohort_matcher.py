@@ -137,82 +137,64 @@ genomic positions for comparison."""
             ''' then parse second tsv file to get list of variants that passed in both samples '''
             tsv2 = os.path.join(config.cache_dir, sample2["name"] + ".tsv")
             var_list2 = get_tsv_variants(tsv2, config.dp_threshold)
-            for var2 in var_list2:
-                bits = var2.split("\t")
-                if alternate_chroms is not None:
-                    var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-                else:
-                    var_ = var2
-                
-                if var_ in var_list:
-                    var_list[var_] = 2
-            #with open(tsv2, "r") as fin:
-            #    for line in fin:
-            #        if line.startswith("CHROM\t"):
-            #            continue
-            #        bits = line.strip("\n").split("\t")
-            #        if alternate_chroms is not None:
-            #            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-            #        else:
-            #            var_ = "\t".join(bits[:2])
-            #        if var_ in var_list:
-            #           var_list[var_] = 2
+            
+            intersection = getIntersectingVariants(var_list, var_list2, default_chroms, alternate_chroms)
 
             #-------------------------------------------------------------------------------
             # write out bam1 variants that both samples have in common
-            bam1_var = os.path.join(config.scratch_dir, "sample1.variants")
-            with open(bam1_var, "w") as fout:
-                with open(tsv1, "r") as fin:
-                    for line in fin:
-                        if line.startswith("CHROM\t"):
-                            continue
-                        bits = line.strip("\n").split("\t")
-                        var_ = "\t".join(bits[:2])
-                        if var_ in var_list and var_list[var_] == 2:
-                            out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-                                                                 bits[3], bits[7])
-                            fout.write(out_line)
+            #bam1_var = os.path.join(config.scratch_dir, "sample1.variants")
+            #with open(bam1_var, "w") as fout:
+            #    with open(tsv1, "r") as fin:
+            #        for line in fin:
+            #            if line.startswith("CHROM\t"):
+            #                continue
+            #            bits = line.strip("\n").split("\t")
+            #            var_ = "\t".join(bits[:2])
+            #            if var_ in var_list and var_list[var_] == 2:
+            #                out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
+            #                                                     bits[3], bits[7])
+            #                fout.write(out_line)
 
             #-------------------------------------------------------------------------------
             # write out bam2 variants that both samples have in common
-            bam2_var = os.path.join(config.scratch_dir, "sample2.variants")
-            with open(bam2_var, "w") as fout:
-                with open(tsv2, "r") as fin:
-                    for line in fin:
-                        if line.startswith("CHROM\t"):
-                            continue
-                        bits = line.strip("\n").split("\t")
-                        if alternate_chroms is not None:
-                            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-                        else:
-                            var_ = "\t".join(bits[:2])
-                        if var_ in var_list and var_list[var_] == 2:
-                            out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-                                                                 bits[3], bits[7])
-                            fout.write(out_line)
+            #bam2_var = os.path.join(config.scratch_dir, "sample2.variants")
+            #with open(bam2_var, "w") as fout:
+            #    with open(tsv2, "r") as fin:
+            #        for line in fin:
+            #            if line.startswith("CHROM\t"):
+            #                continue
+            #            bits = line.strip("\n").split("\t")
+            #            if alternate_chroms is not None:
+            #                var_ = alt_to_def[bits[0]] + "\t" + bits[1]
+            #            else:
+            #                var_ = "\t".join(bits[:2])
+            #            if var_ in var_list and var_list[var_] == 2:
+            #                out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
+            #                                                     bits[3], bits[7])
+            #                fout.write(out_line)
 
             ''' at this point sample1.variants and sample2.variants should have
                 the same number of lines ie variants '''
             ''' get the genotypes from each sample '''
-            bam1_gt = {}
-            bam2_gt = {}
-            pos_list = []
-            with open(bam1_var, "r") as fin:
-                for line in fin:
-                    bits = line.strip("\n").split("\t")
-                    pos_ = "_".join(bits[:2])
-                    geno = bits[4]
-                    pos_list.append(pos_)
-                    bam1_gt[pos_] = geno
-            with open(bam2_var, "r") as fin:
-                for line in fin:
-                    bits = line.strip("\n").split("\t")
-                    if alternate_chroms is not None:
-                        pos_ = alt_to_def[bits[0]] + "_" + bits[1]
-                    else:
-                        pos_ = "_".join(bits[:2])
-                    geno = bits[4]
-                    bam2_gt[pos_] = geno
+            #bam1_gt = {}
+            #bam2_gt = {}
+            #pos_list = []
+            #with open(bam1_var, "r") as fin:
+            #    for line in fin:
+            #        bits = line.strip("\n").split("\t")
+            #        pos_ = "_".join(bits[:2])
+            #        geno = bits[4]
+            #        pos_list.append(pos_)
+            #        bam1_gt[pos_] = geno
+            #with open(bam2_var, "r") as fin:
+            #    for line in fin:
+            #        bits = line.strip("\n").split("\t")
+            #        if alternate_chroms is not None:
+            #            pos_ = alt_to_def[bits[0]] + "_" + bits[1]
+            #        else:
+            #            pos_ = "_".join(bits[:2])
+            #        geno = bits[4]
+            #        bam2_gt[pos_] = geno
 
             ''' compare the genotypes '''
             ct_common = 0
@@ -225,9 +207,14 @@ genomic positions for comparison."""
             diff_hom_het_ct = 0
             diff_2sub1_ct = 0
             diff_het_hom_ct = 0
-            for pos_ in pos_list:
-                gt1 = bam1_gt[pos_]
-                gt2 = bam2_gt[pos_]
+            for pos_ in intersection:
+                gt1 = var_list[pos_]['GT']
+                if alternate_chroms is not None:
+                    gt2 = def_to_alt[pos_]
+                else:
+                    gt2 = var_list2[pos_]['GT']
+                #gt1 = bam1_gt[pos_]
+                #gt2 = bam2_gt[pos_]
                 # if genotypes are the same
                 if is_same_gt(gt1, gt2):
                     ct_common += 1
@@ -510,6 +497,31 @@ def get_chrom_names_from_VCF(vcf_file):
                 chrom_list.append(vcfRecord.CHROM)
     return chrom_list
 
+def getIntersectingVariants(var_list, var_list2, alternate_chroms, alt_to_def):
+    ''' Given two tsv list of variants, find the intersection '''
+    intersection = []
+    for var2 in var_list2:
+        bits = var2.split("\t")
+        if alternate_chroms is not None:
+            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
+        else:
+            var_ = var2
+        
+        if var_ in var_list:
+            intersection.append(var_)
+    #with open(tsv2, "r") as fin:
+    #    for line in fin:
+    #        if line.startswith("CHROM\t"):
+    #            continue
+    #        bits = line.strip("\n").split("\t")
+    #        if alternate_chroms is not None:
+    #            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
+    #        else:
+    #            var_ = "\t".join(bits[:2])
+    #        if var_ in var_list:
+    #           var_list[var_] = 2
+    return intersection
+
 def get_tsv_variants(tsvFile, dp_threshold):
     ''' Return a list of variants that pass threshold '''
     var_list = {}
@@ -523,7 +535,8 @@ def get_tsv_variants(tsvFile, dp_threshold):
             elif int(bits[5]) < dp_threshold:
                 continue
             else:
-                var_list["\t".join(bits[:2])] = 1
+                var_list["\t".join(bits[:2])] = {'REF': bits[2], 'ALT': bits[3],
+                                                 'DP': int(bits[5]), 'GT': bits[7]}
     return var_list
 
 def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
