@@ -22,15 +22,15 @@ class TestCohortMatcher(unittest.TestCase):
 
     def test_compareSamples(self):
         # Set up test parameters
-        sampleSet = [{'name': 'A004AX275-001', 'bam': 'sample1.bam'},
-                     {'name': 'A005AX346-001', 'bam': 'sample2.bam'}]
+        sampleSet1 = [{'name': 'A004AX275-001', 'bam': 'sample1.bam'}]
+        sampleSet2 = [{'name': 'A004AX474-001', 'bam': 'sample2.bam'}]
         config = MagicMock(name="config", dp_threshold=10, chromosome_map=None,
                            cache_dir='test_data', scratch_dir='/scratch')
         # Set up supporting mocks
         #mock_get_tsv_variants.return_value = [{"chr1\t123": 1},
         #                                      {"chr1\t1234": 1}]
         # Test
-        compareSamples(sampleSet, sampleSet, config)
+        compareSamples(sampleSet1, sampleSet2, config)
         # Check results
 
     def test_downloadBAMFile(self):
