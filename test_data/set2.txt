@@ -1,0 +1,2 @@
+sampleA	/home/golharr/workspace/NGS/bam-matcher/test_data/sample1.bam
+sampleB	/home/golharr/workspace/NGS/bam-matcher/test_data/sample2.bam

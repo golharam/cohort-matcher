@@ -115,19 +115,106 @@ def checkReference(sample, localBamFile, reference, vcf):
         return False
     return True
 
+def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to_alt):
+    ct_common = 0
+    comm_hom_ct = 0
+    comm_het_ct = 0
+    ct_diff = 0
+    diff_hom_ct = 0
+    diff_het_ct = 0
+    diff_1sub2_ct = 0
+    diff_hom_het_ct = 0
+    diff_2sub1_ct = 0
+    diff_het_hom_ct = 0
+    for pos_ in intersection:
+        gt1 = var_list[pos_]['GT']
+        if alternate_chroms is not None:
+            gt2 = def_to_alt[pos_]
+        else:
+            gt2 = var_list2[pos_]['GT']
+        #gt1 = bam1_gt[pos_]
+        #gt2 = bam2_gt[pos_]
+        # if genotypes are the same
+        if is_same_gt(gt1, gt2):
+            ct_common += 1
+            if is_hom(gt1):
+                comm_hom_ct += 1
+            else:
+                comm_het_ct += 1
+        else:
+            ct_diff += 1
+            # both are hom and different
+            if is_hom(gt1) and is_hom(gt2):
+                diff_hom_ct += 1
+            # both are het and different
+            elif is_hom(gt1) == False and is_hom(gt2) == False:
+                diff_het_ct += 1
+            # one is hom, one is het, test for subset
+            elif is_hom(gt1):
+                if is_subset(gt1, gt2):
+                    diff_1sub2_ct += 1
+                else:
+                    diff_hom_het_ct += 1
+            elif is_hom(gt2):
+                if is_subset(gt2, gt1):
+                    diff_2sub1_ct += 1
+                else:
+                    diff_het_hom_ct += 1
+            else:
+                print "WTF?"
+                print gt1, gt2
+
+    total_compared = ct_common + ct_diff
+    frac_common_plus = 0
+    frac_common = 0
+    if total_compared > 0:
+        frac_common = float(ct_common)/total_compared
+        frac_common_plus = float(ct_common + max(diff_2sub1_ct,
+                                                 diff_1sub2_ct))/total_compared
+
+    # test of allele-specific genotype subsets
+    allele_subset = ""
+    sub_sum = diff_1sub2_ct + diff_2sub1_ct
+    # don't bother if fewer than 10
+    if sub_sum > 10:
+        pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
+        pv_ = min(pv_set.left_tail, pv_set.right_tail)
+        if pv_ < 0.05:
+            if diff_1sub2_ct < diff_2sub1_ct:
+                allele_subset = "2sub1"
+                frac_common_plus = float(ct_common + diff_2sub1_ct) / total_compared
+            else:
+                allele_subset = "1sub2"
+                frac_common_plus = float(ct_common + diff_1sub2_ct) / total_compared
+
+    results = {}
+    results['total_compared'] = total_compared
+    results['ct_common'] = ct_common
+    results['frac_common'] = frac_common
+    results['frac_common_plus'] = frac_common_plus
+    results['comm_hom_ct'] = comm_hom_ct
+    results['comm_het_ct'] = comm_het_ct
+    results['ct_diff'] = ct_diff
+    results['diff_hom_ct'] = diff_hom_ct
+    results['diff_het_ct'] = diff_het_ct
+    results['diff_hom_het_ct'] = diff_hom_het_ct
+    results['diff_het_hom_ct'] = diff_het_hom_ct
+    results['diff_1sub2_ct'] = diff_1sub2_ct
+    results['diff_2sub1_ct'] = diff_2sub1_ct
+    results['allele_subset'] = allele_subset
+    results['judgement'], results['short_judgement'] = makeJudgement(total_compared, frac_common,
+                                                                     frac_common_plus, allele_subset)
+    return results
+
 def compareSamples(sampleSet1, sampleSet2, config):
     ''' Compare all the samples against each other '''
-
-    A_BIT_LOW = """the number of comparable genomic loci is a bit low.
-Try using a different variants list (--VCF) file which have more appropriate
-genomic positions for comparison."""
-
     if config.chromosome_map:
         default_chroms, alternate_chroms, def_to_alt, alt_to_def = get_chrom_data_from_map(config.chromosome_map)
     else:
         default_chroms, alternate_chroms, def_to_alt, alt_to_def = None, None, None, None
 
-    matrix = {}
+    frac_common_matrix = {}
+    total_compared_matrix = {}
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
             logger.info("Comparing {} - {}".format(sample1["name"], sample2["name"]))
@@ -137,258 +224,23 @@ genomic positions for comparison."""
             ''' then parse second tsv file to get list of variants that passed in both samples '''
             tsv2 = os.path.join(config.cache_dir, sample2["name"] + ".tsv")
             var_list2 = get_tsv_variants(tsv2, config.dp_threshold)
-            
+
             intersection = getIntersectingVariants(var_list, var_list2, default_chroms, alternate_chroms)
 
-            #-------------------------------------------------------------------------------
-            # write out bam1 variants that both samples have in common
-            #bam1_var = os.path.join(config.scratch_dir, "sample1.variants")
-            #with open(bam1_var, "w") as fout:
-            #    with open(tsv1, "r") as fin:
-            #        for line in fin:
-            #            if line.startswith("CHROM\t"):
-            #                continue
-            #            bits = line.strip("\n").split("\t")
-            #            var_ = "\t".join(bits[:2])
-            #            if var_ in var_list and var_list[var_] == 2:
-            #                out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-            #                                                     bits[3], bits[7])
-            #                fout.write(out_line)
-
-            #-------------------------------------------------------------------------------
-            # write out bam2 variants that both samples have in common
-            #bam2_var = os.path.join(config.scratch_dir, "sample2.variants")
-            #with open(bam2_var, "w") as fout:
-            #    with open(tsv2, "r") as fin:
-            #        for line in fin:
-            #            if line.startswith("CHROM\t"):
-            #                continue
-            #            bits = line.strip("\n").split("\t")
-            #            if alternate_chroms is not None:
-            #                var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-            #            else:
-            #                var_ = "\t".join(bits[:2])
-            #            if var_ in var_list and var_list[var_] == 2:
-            #                out_line = "%s\t%s\t%s\t%s\t%s\n" % (bits[0], bits[1], bits[2],
-            #                                                     bits[3], bits[7])
-            #                fout.write(out_line)
-
-            ''' at this point sample1.variants and sample2.variants should have
-                the same number of lines ie variants '''
-            ''' get the genotypes from each sample '''
-            #bam1_gt = {}
-            #bam2_gt = {}
-            #pos_list = []
-            #with open(bam1_var, "r") as fin:
-            #    for line in fin:
-            #        bits = line.strip("\n").split("\t")
-            #        pos_ = "_".join(bits[:2])
-            #        geno = bits[4]
-            #        pos_list.append(pos_)
-            #        bam1_gt[pos_] = geno
-            #with open(bam2_var, "r") as fin:
-            #    for line in fin:
-            #        bits = line.strip("\n").split("\t")
-            #        if alternate_chroms is not None:
-            #            pos_ = alt_to_def[bits[0]] + "_" + bits[1]
-            #        else:
-            #            pos_ = "_".join(bits[:2])
-            #        geno = bits[4]
-            #        bam2_gt[pos_] = geno
-
             ''' compare the genotypes '''
-            ct_common = 0
-            comm_hom_ct = 0
-            comm_het_ct = 0
-            ct_diff = 0
-            diff_hom_ct = 0
-            diff_het_ct = 0
-            diff_1sub2_ct = 0
-            diff_hom_het_ct = 0
-            diff_2sub1_ct = 0
-            diff_het_hom_ct = 0
-            for pos_ in intersection:
-                gt1 = var_list[pos_]['GT']
-                if alternate_chroms is not None:
-                    gt2 = def_to_alt[pos_]
-                else:
-                    gt2 = var_list2[pos_]['GT']
-                #gt1 = bam1_gt[pos_]
-                #gt2 = bam2_gt[pos_]
-                # if genotypes are the same
-                if is_same_gt(gt1, gt2):
-                    ct_common += 1
-                    if is_hom(gt1):
-                        comm_hom_ct += 1
-                    else:
-                        comm_het_ct += 1
-                else:
-                    ct_diff += 1
-                    # both are hom and different
-                    if is_hom(gt1) and is_hom(gt2):
-                        diff_hom_ct += 1
-                    # both are het and different
-                    elif is_hom(gt1) == False and is_hom(gt2) == False:
-                        diff_het_ct += 1
-                    # one is hom, one is het, test for subset
-                    elif is_hom(gt1):
-                        if is_subset(gt1, gt2):
-                            diff_1sub2_ct += 1
-                        else:
-                            diff_hom_het_ct += 1
-                    elif is_hom(gt2):
-                        if is_subset(gt2, gt1):
-                            diff_2sub1_ct += 1
-                        else:
-                            diff_het_hom_ct += 1
-                    else:
-                        print "WTF?"
-                        print gt1, gt2
-            total_compared = ct_common + ct_diff
-            frac_common_plus = 0
-            frac_common = 0
-            if total_compared > 0:
-                frac_common = float(ct_common)/total_compared
-                frac_common_plus = float(ct_common + max(diff_2sub1_ct,
-                                                         diff_1sub2_ct))/total_compared
-            # test of allele-specific genotype subsets
-            allele_subset = ""
-            sub_sum = diff_1sub2_ct + diff_2sub1_ct
-
-            # don't bother if fewer than 10
-            if sub_sum > 10:
-                pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
-                pv_ = min(pv_set.left_tail, pv_set.right_tail)
-                if pv_ < 0.05:
-                    if diff_1sub2_ct < diff_2sub1_ct:
-                        allele_subset = "2sub1"
-                        frac_common_plus = float(ct_common + diff_2sub1_ct) / total_compared
-                    else:
-                        allele_subset = "1sub2"
-                        frac_common_plus = float(ct_common + diff_1sub2_ct) / total_compared
-            if total_compared <= 20:
-                judgement = "Inconclusive: Too few loci to compare"
-            elif total_compared <= 100:
-                # allow for 0.90 frac_common for low loci count
-                if frac_common >= 0.9 or frac_common_plus >= 0.9:
-                    judgement = "LIKELY SAME SOURCE: %s" % A_BIT_LOW
-                    short_judgement = "LIKELY SAME"
-                    # if there is possible allele-specific genotype subset
-                    if allele_subset == "1sub2" or allele_subset == "2sub1":
-                        sub_ = allele_subset.split("sub")[0]
-                        over_ = allele_subset.split("sub")[1]
-                        judgement += """BAM%s genotype appears to be a subset of BAM%s. Possibly
-                        BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_,
-                                                                              over_,
-                                                                              sub_,
-                                                                              over_)
-                        short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
-                elif frac_common <= 0.6:
-                    judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
-                    short_judgement = "LIKELY DIFFERENT"
-                else:
-                    judgement = "INCONCLUSIVE: %s" % A_BIT_LOW
-                    short_judgement = "INCONCLUSIVE"
-            # 3. >100 sites compared
-            else:
-                if frac_common >= 0.95:
-                    judgement = "BAM FILES ARE FROM THE SAME SOURCE"
-                    short_judgement = "SAME"
-                elif frac_common_plus >= 0.95:
-                    short_judgement = "SAME"
-                    judgement = "BAM FILES ARE VERY LIKELY FROM THE SAME SOURCE"
-                    if allele_subset == "1sub2" or allele_subset == "2sub1":
-                        sub_ = allele_subset.split("sub")[0]
-                        over_ = allele_subset.split("sub")[1]
-                        judgement += """, but with possible allele specific genotype.\nBAM%s
-                        genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq
-                        data or BAM%s is contaminated. """ % (sub_, over_, sub_, over_)
-                        short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
-                elif frac_common <= 0.6:
-                    judgement = "BAM FILES ARE FROM DIFFERENT SOURCES"
-                    short_judgement = "DIFFERENT"
-                elif frac_common >= 0.8:
-                    judgement = """LIKELY FROM THE SAME SOURCE. However, the fraction of sites
-                    with common genotype is lower than expected. This can happen with samples
-                    with low coverage."""
-                    short_judgement = "LIKELY SAME"
-                else:
-                    judgement = "LIKELY FROM DIFFERENT SOURCES"
-                    short_judgement = "LIKELY DIFFERENT"
-
-            # so pad numeric string to 6 spaces
-            diff_hom = ("%d" % diff_hom_ct).rjust(5)
-            diff_het = ("%d" % diff_het_ct).rjust(5)
-            diff_het_hom = ("%d" % diff_het_hom_ct).rjust(5)
-            diff_hom_het = ("%d" % diff_hom_het_ct).rjust(5)
-            diff_1sub2 = ("%d" % diff_1sub2_ct).rjust(5)
-            diff_2sub1 = ("%d" % diff_2sub1_ct).rjust(5)
-            std_report_str = """sample1:\t%s
-sample2:\t%s
-variants:\t%s
-depth threshold: %d
-________________________________________
-
-Positions with same genotype:   %d
-    breakdown:    hom: %d
-                  het: %d
-________________________________________
-
-Positions with diff genotype:   %d
-     breakdown:
-                         SAMPLE 1
-                  | het  | hom  | subset
-            -------+------+------+------
-            het   |%s |%s |%s |
-            -------+------+------+------
-SAMPLE 2    hom   |%s |%s |   -  |
-            -------+------+------+------
-            subset|%s |   -  |   -  |
-________________________________________
-
-Total sites compared: %d
-Fraction of common: %f (%d/%d)
-________________________________________
-CONCLUSION:
-%s"""  % (sample1["name"], sample2["name"], config.vcf, config.dp_threshold,
-          ct_common, comm_hom_ct, comm_het_ct, ct_diff, diff_het, diff_hom_het,
-          diff_1sub2, diff_het_hom, diff_hom, diff_2sub1, total_compared,
-          frac_common, ct_common, total_compared, judgement)
-            short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t
-            Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t
-            1sub-2het\t Conclusion
-            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % (sample1["name"],
-                   sample2["name"], config.dp_threshold, frac_common, ct_common, comm_hom_ct, comm_het_ct,
-                   ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct, diff_hom_het_ct,
-                   diff_hom_ct, diff_1sub2_ct, short_judgement)
-            REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1["name"], sample2["name"])
-            with open(REPORT_PATH, "w") as fout:
-                if config.short_output:
-                    fout.write(short_report_str)
-                    if config.verbose:
-                        print short_report_str
-                else:
-                    fout.write(std_report_str)
-                    logger.info(std_report_str)
+            results = compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to_alt)
+            writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
+            
             ''' save to grand matrix '''
-            if sample1["name"] not in matrix:
-                matrix[sample1["name"]] = {}
-            matrix[sample1["name"]][sample2["name"]] = frac_common
-
-    ''' print out grand matrix '''
-    REPORT_PATH = config.report_file
-    logger.info("Writing report to {}".format(REPORT_PATH))
-    with open(REPORT_PATH, "w") as fout:
-        for sample1 in sampleSet1:
-            fout.write("\t" + sample1["name"])
-        fout.write("\n")
-        for sample2 in sampleSet2:
-            fout.write(sample2["name"])
-            for sample1 in sampleSet1:
-                s = '%.4f' % matrix[sample1["name"]][sample2["name"]]
-                fout.write("\t" + s)
-            fout.write("\n")
-
+            if sample1["name"] not in frac_common_matrix:
+                frac_common_matrix[sample1["name"]] = {}
+                total_compared_matrix[sample1["name"]] = {}
+            frac_common_matrix[sample1["name"]][sample2["name"]] = results['frac_common']
+            total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
+            
+    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix)
+    
+    
 def downloadBAMFile(bamFile, config):
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
     if os.path.exists(localBamFile):
@@ -509,17 +361,7 @@ def getIntersectingVariants(var_list, var_list2, alternate_chroms, alt_to_def):
         
         if var_ in var_list:
             intersection.append(var_)
-    #with open(tsv2, "r") as fin:
-    #    for line in fin:
-    #        if line.startswith("CHROM\t"):
-    #            continue
-    #        bits = line.strip("\n").split("\t")
-    #        if alternate_chroms is not None:
-    #            var_ = alt_to_def[bits[0]] + "\t" + bits[1]
-    #        else:
-    #            var_ = "\t".join(bits[:2])
-    #        if var_ in var_list:
-    #           var_list[var_] = 2
+
     return intersection
 
 def get_tsv_variants(tsvFile, dp_threshold):
@@ -679,6 +521,62 @@ def main(argv):
 
     compareSamples(sampleSet1, sampleSet2, config)
     return 0
+
+def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
+    ''' Make judgement of sample similarity based on genotype comparison '''
+    A_BIT_LOW = """the number of comparable genomic loci is a bit low.
+Try using a different variants list (--VCF) file which have more appropriate
+genomic positions for comparison."""
+    
+    if total_compared <= 20:
+        judgement = "Inconclusive: Too few loci to compare"
+    elif total_compared <= 100:
+        # allow for 0.90 frac_common for low loci count
+        if frac_common >= 0.9 or frac_common_plus >= 0.9:
+            judgement = "LIKELY SAME SOURCE: %s" % A_BIT_LOW
+            short_judgement = "LIKELY SAME"
+            # if there is possible allele-specific genotype subset
+            if allele_subset == "1sub2" or allele_subset == "2sub1":
+                sub_ = allele_subset.split("sub")[0]
+                over_ = allele_subset.split("sub")[1]
+                judgement += """BAM%s genotype appears to be a subset of BAM%s. Possibly
+                BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_,
+                                                                      sub_, over_)
+                short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
+        elif frac_common <= 0.6:
+            judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
+            short_judgement = "LIKELY DIFFERENT"
+        else:
+            judgement = "INCONCLUSIVE: %s" % A_BIT_LOW
+            short_judgement = "INCONCLUSIVE"
+    # 3. >100 sites compared
+    else:
+        if frac_common >= 0.95:
+            judgement = "BAM FILES ARE FROM THE SAME SOURCE"
+            short_judgement = "SAME"
+        elif frac_common_plus >= 0.95:
+            short_judgement = "SAME"
+            judgement = "BAM FILES ARE VERY LIKELY FROM THE SAME SOURCE"
+            if allele_subset == "1sub2" or allele_subset == "2sub1":
+                sub_ = allele_subset.split("sub")[0]
+                over_ = allele_subset.split("sub")[1]
+                judgement += """, but with possible allele specific genotype.\nBAM%s
+                genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq
+                data or BAM%s is contaminated. """ % (sub_, over_, sub_, over_)
+                short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
+        elif frac_common <= 0.6:
+            judgement = "BAM FILES ARE FROM DIFFERENT SOURCES"
+            short_judgement = "DIFFERENT"
+        elif frac_common >= 0.8:
+            judgement = """LIKELY FROM THE SAME SOURCE. However, the fraction of sites
+            with common genotype is lower than expected. This can happen with samples
+            with low coverage."""
+            short_judgement = "LIKELY SAME"
+        else:
+            judgement = "LIKELY FROM DIFFERENT SOURCES"
+            short_judgement = "LIKELY DIFFERENT"
+
+    return judgement, short_judgement
 
 def parseArguments(argv):
     parser = argparse.ArgumentParser(description="Compare two sets cohorts of bam files \
@@ -894,5 +792,92 @@ def VCFtoTSV(invcf, outtsv, caller):
     fout.close()
     return var_ct
 
+def writeSampleComparisonReport(sample1, sample2, config, results):
+    # unpack values used in this function
+    total_compared = results['total_compared']
+    ct_common = results['ct_common']
+    frac_common = results['frac_common']
+    comm_hom_ct = results['comm_hom_ct']
+    comm_het_ct = results['comm_het_ct']
+    ct_diff = results['ct_diff']
+    diff_hom_ct = results['diff_hom_ct']
+    diff_het_ct = results['diff_het_ct']
+    diff_het_hom_ct = results['diff_het_hom_ct']
+    diff_hom_het_ct = results['diff_hom_het_ct']
+    diff_1sub2_ct = results['diff_1sub2_ct']
+    diff_2sub1_ct = results['diff_2sub1_ct']
+    judgement = results['judgement']
+    short_judgement = results['short_judgement']
+    # so pad numeric string to 6 spaces
+    diff_hom = ("%d" % diff_hom_ct).rjust(5)
+    diff_het = ("%d" % diff_het_ct).rjust(5)
+    diff_het_hom = ("%d" % diff_het_hom_ct).rjust(5)
+    diff_hom_het = ("%d" % diff_hom_het_ct).rjust(5)
+    diff_1sub2 = ("%d" % diff_1sub2_ct).rjust(5)
+    diff_2sub1 = ("%d" % diff_2sub1_ct).rjust(5)
+    std_report_str = """sample1:\t%s
+sample2:\t%s
+variants:\t%s
+depth threshold: %d
+________________________________________
+
+Positions with same genotype:   %d
+breakdown:    hom: %d
+          het: %d
+________________________________________
+
+Positions with diff genotype:   %d
+     breakdown:
+                         SAMPLE 1
+                  | het  | hom  | subset
+            -------+------+------+------
+            het   |%s |%s |%s |
+            -------+------+------+------
+SAMPLE 2    hom   |%s |%s |   -  |
+            -------+------+------+------
+            subset|%s |   -  |   -  |
+________________________________________
+
+Total sites compared: %d
+Fraction of common: %f (%d/%d)
+________________________________________
+CONCLUSION:
+%s"""  % (sample1, sample2, config.vcf, config.dp_threshold,
+          ct_common, comm_hom_ct, comm_het_ct, ct_diff, diff_het, diff_hom_het,
+          diff_1sub2, diff_het_hom, diff_hom, diff_2sub1, total_compared,
+          frac_common, ct_common, total_compared, judgement)
+    short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t
+            Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t
+            1sub-2het\t Conclusion
+            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % (sample1,
+                   sample2, config.dp_threshold, frac_common, ct_common, comm_hom_ct, comm_het_ct,
+                   ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct, diff_hom_het_ct,
+                   diff_hom_ct, diff_1sub2_ct, short_judgement)
+
+    REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
+    with open(REPORT_PATH, "w") as fout:
+        if config.short_output:
+            fout.write(short_report_str)
+            if config.verbose:
+                print short_report_str
+        else:
+            fout.write(std_report_str)
+            logger.info(std_report_str)
+
+def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix):
+    ''' print out grand matrix '''
+    REPORT_PATH = config.report_file
+    logger.info("Writing report to {}".format(REPORT_PATH))
+    with open(REPORT_PATH, "w") as fout:
+        for sample1 in sampleSet1:
+            fout.write("\t" + sample1["name"])
+        fout.write("\n")
+        for sample2 in sampleSet2:
+            fout.write(sample2["name"])
+            for sample1 in sampleSet1:
+                s = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+                fout.write("\t" + s)
+            fout.write("\n")
+    
 if __name__ == "__main__":
     main(sys.argv[1:])

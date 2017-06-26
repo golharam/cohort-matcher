@@ -20,18 +20,24 @@ class TestCohortMatcher(unittest.TestCase):
         # Check results
         self.assertTrue(retVal)
 
-    def test_compareSamples(self):
+    @patch('cohort_matcher.get_tsv_variants')
+    @patch('cohort_matcher.getIntersectingVariants')
+    @patch('cohort_matcher.compareGenotypes')
+    @patch('cohort_matcher.writeSampleComparisonReport')
+    @patch('cohort_matcher.writeSimilarityMatrix')
+    def test_compareSamples(self, mock_writeSimilarityMatrix, mock_writeSampleComparisonReport,
+                            mock_compareGenotypes, mock_getIntersectingVariants, mock_get_tsv_variants):
         # Set up test parameters
         sampleSet1 = [{'name': 'A004AX275-001', 'bam': 'sample1.bam'}]
         sampleSet2 = [{'name': 'A004AX474-001', 'bam': 'sample2.bam'}]
         config = MagicMock(name="config", dp_threshold=10, chromosome_map=None,
                            cache_dir='test_data', scratch_dir='/scratch')
         # Set up supporting mocks
-        #mock_get_tsv_variants.return_value = [{"chr1\t123": 1},
-        #                                      {"chr1\t1234": 1}]
         # Test
         compareSamples(sampleSet1, sampleSet2, config)
         # Check results
+        # Make sure all samples were sample sheet were compared against each other
+        mock_writeSampleComparisonReport.assert_called()
 
     def test_downloadBAMFile(self):
         self.skipTest("not yet implemented")
@@ -44,9 +50,10 @@ class TestCohortMatcher(unittest.TestCase):
     @patch('subprocess.Popen')
     @patch('cohort_matcher.VCFtoTSV')
     @patch('os.remove')
-    def test_genotypeSample(self, mock_osremove, mock_VCFtoTSV, mock_Popen, mock_getChromNamesFromVCF, 
-                            mock_getChromNamesFromREF, mock_getChromNamesFromBAM, 
-                            mock_downloadBAMFile, mock_pathexists):
+    def test_genotypeSample(self, mock_osremove, mock_VCFtoTSV, mock_Popen, 
+                            mock_getChromNamesFromVCF, mock_getChromNamesFromREF, 
+                            mock_getChromNamesFromBAM,  mock_downloadBAMFile, 
+                            mock_pathexists):
         # Set up test parameters
         sample = 'asdf'
         bamFile = 's3://some/path/to/asdf.bam'
@@ -60,7 +67,8 @@ class TestCohortMatcher(unittest.TestCase):
         p.communicate.return_value = None, None
         mock_Popen.return_value = p
         # Test
-        genotypeSample(sample, bamFile, "reference", "vcf", "intervalsFile", MagicMock(name="config", cache_dir="./cache", caller="freebayes"))
+        genotypeSample(sample, bamFile, "reference", "vcf", "intervalsFile",
+                       MagicMock(name="config", cache_dir="./cache", caller="freebayes"))
         # Check results
         mock_Popen.assert_called_once()
         mock_VCFtoTSV.assert_called_once()
@@ -98,14 +106,14 @@ class TestCohortMatcher(unittest.TestCase):
 
     def test_get_tsv_variants(self):
         # Set up test parameters
-        tsvFile = 'test_data/sample1.tsv'
+        tsvFile = 'test_data/A004AX275-001.tsv'
         dp_threshold = 15
         # Set up supporting mocks
         # Test
         variants = get_tsv_variants(tsvFile, dp_threshold)
         # Check results
-        self.assertEqual(len(variants), 5)
-        self.assertEqual(variants["chr1\t881627"], 1)
+        self.assertEqual(len(variants), 5899)
+        self.assertEqual(variants["chr1\t881627"], {'ALT': '.', 'GT': 'G/G', 'REF': 'G', 'DP': 50})
         
     @patch('cohort_matcher.parseArguments')
     @patch('cohort_matcher.checkConfig')
