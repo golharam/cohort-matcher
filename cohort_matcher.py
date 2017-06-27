@@ -530,6 +530,7 @@ genomic positions for comparison."""
     
     if total_compared <= 20:
         judgement = "Inconclusive: Too few loci to compare"
+        short_judgement = "INCONCLUSIVE"
     elif total_compared <= 100:
         # allow for 0.90 frac_common for low loci count
         if frac_common >= 0.9 or frac_common_plus >= 0.9:
@@ -555,8 +556,8 @@ genomic positions for comparison."""
             judgement = "BAM FILES ARE FROM THE SAME SOURCE"
             short_judgement = "SAME"
         elif frac_common_plus >= 0.95:
-            short_judgement = "SAME"
             judgement = "BAM FILES ARE VERY LIKELY FROM THE SAME SOURCE"
+            short_judgement = "LIKELY SAME"
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]

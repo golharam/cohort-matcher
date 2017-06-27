@@ -4,8 +4,9 @@ from mock import patch, MagicMock, mock
 from tempfile import NamedTemporaryFile
 import os
 import filecmp
-from cohort_matcher import checkConfig, main, parseArguments, readSamples, \
-     vcfToIntervals, genotypeSamples, genotypeSample, compareSamples, get_tsv_variants
+from cohort_matcher import checkConfig, compareGenotypes, main, parseArguments, \
+     readSamples, vcfToIntervals, genotypeSamples, genotypeSample, compareSamples, \
+	 get_tsv_variants
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
@@ -20,13 +21,42 @@ class TestCohortMatcher(unittest.TestCase):
         # Check results
         self.assertTrue(retVal)
 
+    def test_compareGenotypes(self):
+        # Set up test case
+        var_list = {'chr1\t1': {'GT': 'C/C'},
+                    'chr1\t2': {'GT': 'A/G'}}
+        var_list2 = {'chr1\t1': {'GT': 'C/C'},
+                     'chr1\t2': {'GT': 'A/G'}}
+        intersection = ['chr1\t1', 'chr1\t2']
+        # Set up supporting mocks
+        # Test
+        results = compareGenotypes(var_list, var_list2, intersection, None, None)
+        # Check retults
+        self.assertEqual(results['total_compared'], 2)
+        self.assertEqual(results['ct_common'], 2)
+        #results['frac_common'] = frac_common
+        #results['frac_common_plus'] = frac_common_plus
+        self.assertEqual(results['comm_hom_ct'], 1)
+        self.assertEqual(results['comm_het_ct'], 1)
+        #results['ct_diff'] = ct_diff
+        #results['diff_hom_ct'] = diff_hom_ct
+        #results['diff_het_ct'] = diff_het_ct
+        #results['diff_hom_het_ct'] = diff_hom_het_ct
+        #results['diff_het_hom_ct'] = diff_het_hom_ct
+        #results['diff_1sub2_ct'] = diff_1sub2_ct
+        #results['diff_2sub1_ct'] = diff_2sub1_ct
+        #results['allele_subset'] = allele_subset
+        #results['judgement'], results['short_judgement'] = makeJudgement(total_compared, frac_common,
+        #                                                             frac_common_plus, allele_subset)
+        
     @patch('cohort_matcher.get_tsv_variants')
     @patch('cohort_matcher.getIntersectingVariants')
     @patch('cohort_matcher.compareGenotypes')
     @patch('cohort_matcher.writeSampleComparisonReport')
     @patch('cohort_matcher.writeSimilarityMatrix')
-    def test_compareSamples(self, mock_writeSimilarityMatrix, mock_writeSampleComparisonReport,
-                            mock_compareGenotypes, mock_getIntersectingVariants, mock_get_tsv_variants):
+    def test_compareSamples(self, mock_writeSimilarityMatrix,
+			                mock_writeSampleComparisonReport, mock_compareGenotypes,
+							mock_getIntersectingVariants, mock_get_tsv_variants):
         # Set up test parameters
         sampleSet1 = [{'name': 'A004AX275-001', 'bam': 'sample1.bam'}]
         sampleSet2 = [{'name': 'A004AX474-001', 'bam': 'sample2.bam'}]
