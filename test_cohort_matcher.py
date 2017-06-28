@@ -4,7 +4,7 @@ from mock import patch, MagicMock, mock
 from tempfile import NamedTemporaryFile
 import os
 import filecmp
-from cohort_matcher import checkConfig, compareGenotypes, main, parseArguments, \
+from cohort_matcher import checkConfig, compareGenotypes, is_same_gt, main, parseArguments, \
      readSamples, vcfToIntervals, genotypeSamples, genotypeSample, compareSamples, \
 	 get_tsv_variants
 
@@ -23,28 +23,42 @@ class TestCohortMatcher(unittest.TestCase):
 
     def test_compareGenotypes(self):
         # Set up test case
-        var_list = {'chr1\t1': {'GT': 'C/C'},
-                    'chr1\t2': {'GT': 'A/G'}}
-        var_list2 = {'chr1\t1': {'GT': 'C/C'},
-                     'chr1\t2': {'GT': 'A/G'}}
-        intersection = ['chr1\t1', 'chr1\t2']
+        # chr1:1 hom same
+        # chr1:2 het same
+        # chr1:3 hom diff
+        # chr1:4 het diff
+        # chr1:5 hom vs het diff
+        # chr1:6 het vs hom diff
+        # chr1:7 hom vs het subset
+        # chr1:8 het vs hom subset
+        var_list = {'chr1\t1': {'GT': 'C/C'}, 'chr1\t2': {'GT': 'A/G'},
+                    'chr1\t3': {'GT': 'A/A'}, 'chr1\t4': {'GT': 'C/T'},
+                    'chr1\t5': {'GT': 'A/A'}, 'chr1\t6': {'GT': 'A/T'},
+                    'chr1\t7': {'GT': 'A/A'}, 'chr1\t8': {'GT': 'C/G'}}
+        
+        var_list2 = {'chr1\t1': {'GT': 'C/C'}, 'chr1\t2': {'GT': 'A/G'},
+                     'chr1\t3': {'GT': 'G/G'}, 'chr1\t4': {'GT': 'A/G'},
+                     'chr1\t5': {'GT': 'C/T'}, 'chr1\t6': {'GT': 'G/G'},
+                     'chr1\t7': {'GT': 'A/T'}, 'chr1\t8': {'GT': 'C/C'}}
+        intersection = ['chr1\t1', 'chr1\t2', 'chr1\t3', 'chr1\t4', 'chr1\t5',
+                        'chr1\t6', 'chr1\t7', 'chr1\t8']
         # Set up supporting mocks
         # Test
         results = compareGenotypes(var_list, var_list2, intersection, None, None)
         # Check retults
-        self.assertEqual(results['total_compared'], 2)
+        self.assertEqual(results['total_compared'], 8)
         self.assertEqual(results['ct_common'], 2)
         #results['frac_common'] = frac_common
         #results['frac_common_plus'] = frac_common_plus
         self.assertEqual(results['comm_hom_ct'], 1)
         self.assertEqual(results['comm_het_ct'], 1)
-        #results['ct_diff'] = ct_diff
-        #results['diff_hom_ct'] = diff_hom_ct
-        #results['diff_het_ct'] = diff_het_ct
-        #results['diff_hom_het_ct'] = diff_hom_het_ct
-        #results['diff_het_hom_ct'] = diff_het_hom_ct
-        #results['diff_1sub2_ct'] = diff_1sub2_ct
-        #results['diff_2sub1_ct'] = diff_2sub1_ct
+        self.assertEqual(results['ct_diff'], 6)
+        self.assertEqual(results['diff_hom_ct'], 1)
+        self.assertEqual(results['diff_het_ct'], 1)
+        self.assertEqual(results['diff_hom_het_ct'], 1)
+        self.assertEqual(results['diff_het_hom_ct'], 1)
+        self.assertEqual(results['diff_1sub2_ct'], 1)
+        self.assertEqual(results['diff_2sub1_ct'], 1)
         #results['allele_subset'] = allele_subset
         #results['judgement'], results['short_judgement'] = makeJudgement(total_compared, frac_common,
         #                                                             frac_common_plus, allele_subset)
@@ -144,6 +158,12 @@ class TestCohortMatcher(unittest.TestCase):
         # Check results
         self.assertEqual(len(variants), 5899)
         self.assertEqual(variants["chr1\t881627"], {'ALT': '.', 'GT': 'G/G', 'REF': 'G', 'DP': 50})
+    
+    def test_is_same_gt(self):
+        self.assertTrue(is_same_gt('A/A', 'A/A'))
+        self.assertTrue(is_same_gt('C/T', 'C/T'))
+        self.assertFalse(is_same_gt('A/A', 'G/G'))
+        self.assertTrue(is_same_gt('A/C', 'C/A'))
         
     @patch('cohort_matcher.parseArguments')
     @patch('cohort_matcher.checkConfig')

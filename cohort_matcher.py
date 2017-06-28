@@ -163,6 +163,7 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
             else:
                 print "WTF?"
                 print gt1, gt2
+                exit(1)
 
     total_compared = ct_common + ct_diff
     frac_common_plus = 0
