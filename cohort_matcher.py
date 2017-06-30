@@ -216,6 +216,11 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     frac_common_matrix = {}
     total_compared_matrix = {}
+    classification = {}
+    if os.path.exists(config.report_file) is True:
+        logger.warn("%s already exists.  Skipping this step.", config.report_file)
+        return
+
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
             logger.info("Comparing {} - {}".format(sample1["name"], sample2["name"]))
@@ -230,18 +235,19 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
             ''' compare the genotypes '''
             results = compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to_alt)
+            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'], results['short_judgement'])
             writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
             
             ''' save to grand matrix '''
             if sample1["name"] not in frac_common_matrix:
                 frac_common_matrix[sample1["name"]] = {}
                 total_compared_matrix[sample1["name"]] = {}
+                classification[sample1["name"]] = {}
             frac_common_matrix[sample1["name"]][sample2["name"]] = results['frac_common']
             total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
-            
-    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix)
-    
-    
+            classification[sample1["name"]][sample2["name"]] =  results['short_judgement']
+    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, classification)
+
 def downloadBAMFile(bamFile, config):
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
     if os.path.exists(localBamFile):
@@ -521,6 +527,7 @@ def main(argv):
         genotypeSamples(sampleSet2, config.reference2, config.vcf2, intervalsFile2, config)
 
     compareSamples(sampleSet1, sampleSet2, config)
+    plotResults(config)
     return 0
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
@@ -628,10 +635,12 @@ def parseArguments(argv):
                              help="Path to freebayes binary (if not in PATH")
 
     parser_grp7 = parser.add_argument_group("Paths")
-    parser_grp7.add_argument("--aws", required=False, default="/usr/bin/aws",
-                             help="Specify path to aws cli")
+    parser_grp7.add_argument("--aws", required=False, default="aws",
+                             help="Path to aws cli")
+    parser_grp7.add_argument("--Rscript", required=False, default="Rscript",
+                             help="Path to Rscript")
     parser_grp7.add_argument("--samtools", required=False, default="samtools",
-                             help="Specify path to samtools")
+                             help="Path to samtools")
 
     parser_grp8 = parser.add_argument_group("Output")
     parser_grp8.add_argument("--output-dir", "-O", required=False,
@@ -660,6 +669,16 @@ def parseArguments(argv):
     args = parser.parse_args(argv)
     return args
 
+def plotResults(config):
+    logger.info("Plotting results")
+    reportTopMatches = os.path.dirname(os.path.realpath(__file__)) + '/reportTopMatches.r'
+    cmd = [config.Rscript, "--vanilla", reportTopMatches, config.report_file]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    p.wait()
+    if p.returncode != 0:
+        logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out, err)
+                
 def readSamples(sampleSheetFile):
     '''
     readSamples reads in a sampleSheetFile consisting of two columns:
@@ -857,29 +876,36 @@ CONCLUSION:
                    diff_hom_ct, diff_1sub2_ct, short_judgement)
 
     REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
+    if os.path.exists(REPORT_PATH) is False:
+        return
+
     with open(REPORT_PATH, "w") as fout:
         if config.short_output:
             fout.write(short_report_str)
-            if config.verbose:
-                print short_report_str
         else:
             fout.write(std_report_str)
-            logger.info(std_report_str)
 
-def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix):
+def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, classification):
     ''' print out grand matrix '''
-    REPORT_PATH = config.report_file
-    logger.info("Writing report to {}".format(REPORT_PATH))
-    with open(REPORT_PATH, "w") as fout:
-        for sample1 in sampleSet1:
-            fout.write("\t" + sample1["name"])
-        fout.write("\n")
-        for sample2 in sampleSet2:
-            fout.write(sample2["name"])
+    logger.info("Writing similarity matrix to {}".format(config.report_file))
+    logger.info("Writing total_compared matrix to total_compared.txt")
+    with open(config.report_file, "w") as fout:
+        with open('total_compared.txt', "w") as f_tot_compared:
             for sample1 in sampleSet1:
-                s = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
-                fout.write("\t" + s)
+                fout.write("\t" + sample1["name"])
+                f_tot_compared.write("\t" + sample1["name"])
             fout.write("\n")
+            f_tot_compared.write("\n")
+            for sample2 in sampleSet2:
+                fout.write(sample2["name"])
+                f_tot_compared.write(sample2["name"])
+                for sample1 in sampleSet1:
+                    s = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+                    fout.write("\t" + s)
+                    s = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+                    f_tot_compared.write("\t" + s)
+                fout.write("\n")
+                f_tot_compared.write("\n")
     
 if __name__ == "__main__":
     main(sys.argv[1:])

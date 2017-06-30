@@ -1,43 +1,15 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   cohort_matcher_results <- "cohort-matcher-results.txt"
+  total_compared_file <- "total_compared.txt"
 } else {
   cohort_matcher_results <- args[1]
+  total_compared_file <- args[2]
 }
 paste("Reading", cohort_matcher_results, sep=" ")
 table <- read.table(cohort_matcher_results, header=TRUE, row.names=1)
-
-
-# This only works if the row and column names are the same
-reportTopMatches_old <- function(x, ...) {
-  f <- file("topmatches.txt", "w")
-  writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
-  for (sample in rownames(x)) {
-      # Ihis code assumes the sampelids are the same in the rows and columns,
-      # but this won't be the same when comparing different cohorts.
-  	sortedTable <- x[order(-x[,sample]),]
-  	writeLines(paste(sample, 
-  		    rownames(sortedTable)[1],  sortedTable[1,sample],
-  		    rownames(sortedTable)[2],  sortedTable[2,sample],
-  		    rownames(sortedTable)[3],  sortedTable[3,sample],
-  		    rownames(sortedTable)[4],  sortedTable[4,sample],
-  		    rownames(sortedTable)[5],  sortedTable[5,sample],
-  		    sep="\t"),
-  		   f)
-  }
-  close(f)
-}
-
-reportTopMatch <- function(x, ...) {
-  ## This only returns the TOP match.
-  # Get column index of the max value of each row in x
-  maxcolidx <- max.col(x, "first")
-  # Get the max row value
-  maxcolval <- x[cbind(1:nrow(x), maxcolidx)]
-  # Get the col (sample) names
-  samplenames <- names(x)[maxcolidx]
-  res <- data.frame(samplenames, maxcolval)
-}
+paste("Reading", total_compared_file, sep=" ")
+total_compared <- read.table(total_compared_file, header=TRUE, row.names=1)
 
 reportTopMatches <- function(x, ...) {
   f <- file("topmatches.txt", "w")
@@ -125,6 +97,55 @@ myImagePlot <- function(x, ...) {
   
   layout(1)
 }
+
+plotNumSNPsCompared <- function(x, ...) {
+    heatmap.2(data.matrix(x), 
+          # dendrogram control
+          Rowv=NULL, Colv=NULL, 
+          dendrogram='none',
+
+          # data scaling
+          scale="none",
+
+          # mapping data to colors
+          symbreaks=FALSE, 
+
+          # colors
+          col = rev(rainbow(20*10, start = 0/6, end = 4/6)), 
+
+          # level trace
+          trace='none', 
+
+          # Row/Column Labeling
+          margins=c(3,0), # ("margin.Y", "margin.X")
+          labRow=NA,
+          labCol=NA,
+          
+          # color key + density info
+          keysize=1, 
+          density.info='histogram', 
+          denscol="black",
+          symkey=FALSE, 
+          key.title="# of SNPs",
+          #( "bottom.margin", "left.margin", "top.margin", "left.margin" )
+          key.par=list(mar=c(3.5,0,3,0)),
+
+           # plot labels
+           main = NULL,
+           xlab = NULL,
+           ylab = NULL,
+          
+          # plot layout
+          # lmat - visual layout: position matrix
+          # lhei - column height
+          # lwid - column width
+          # lmat -- added 2 lattice sections (5 and 6) for padding
+          lmat=rbind(c(5, 4, 2), c(6, 1, 3)), 
+          lhei=c(2.5, 5),
+          lwid=c(1, 10, 1))
+
+}
+
 # ----- END plot function ----- #
 
 paste("Writing top matches in topmatches.txt", sep=" ")
@@ -135,4 +156,10 @@ pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
 pdf(pdfFile)
 myImagePlot(M.table)
+dev.off()
+
+paste("Plotting total_compared.pdf")
+library(gplots)
+pdf("total_compared.pdf")
+plotNumSNPsCompared(data.matrix(total_compared))
 dev.off()
