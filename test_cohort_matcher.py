@@ -68,7 +68,8 @@ class TestCohortMatcher(unittest.TestCase):
     @patch('cohort_matcher.compareGenotypes')
     @patch('cohort_matcher.writeSampleComparisonReport')
     @patch('cohort_matcher.writeSimilarityMatrix')
-    def test_compareSamples(self, mock_writeSimilarityMatrix,
+    @patch('os.path.exists')
+    def test_compareSamples(self, mock_exists, mock_writeSimilarityMatrix,
 			                mock_writeSampleComparisonReport, mock_compareGenotypes,
 							mock_getIntersectingVariants, mock_get_tsv_variants):
         # Set up test parameters
@@ -77,6 +78,7 @@ class TestCohortMatcher(unittest.TestCase):
         config = MagicMock(name="config", dp_threshold=10, chromosome_map=None,
                            cache_dir='test_data', scratch_dir='/scratch')
         # Set up supporting mocks
+        mock_exists.return_value = False
         # Test
         compareSamples(sampleSet1, sampleSet2, config)
         # Check results
@@ -171,9 +173,11 @@ class TestCohortMatcher(unittest.TestCase):
     @patch('cohort_matcher.vcfToIntervals')
     @patch('cohort_matcher.genotypeSamples')
     @patch('cohort_matcher.compareSamples')
-    def test_main(self, mock_compareSamples, mock_genotypeSamples,
-                  mock_vcfToIntervals, mock_readSamples,
-                  mock_checkConfig, mock_parseArguments):
+    @patch('cohort_matcher.plotResults')
+    def test_main(self, mock_plotResults, mock_compareSamples,
+                  mock_genotypeSamples, mock_vcfToIntervals,
+                  mock_readSamples, mock_checkConfig,
+                  mock_parseArguments):
         # Set up test case
         argv = []
         # Set up supporting mocks
