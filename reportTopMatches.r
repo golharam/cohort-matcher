@@ -32,7 +32,7 @@ reportTopMatches <- function(x, ...) {
 # http://www.phaget4.org/R/image_matrix.html
 # https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
 # ----- Define a function for plotting a matrix ----- #
-myImagePlot <- function(x, ...) {
+plotSampleSimilarity <- function(x, ...) {
   min <- min(x)
   max <- max(x)
   yLabels <- rownames(x)
@@ -217,7 +217,7 @@ M.table <- as.matrix(table)
 pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
 pdf(pdfFile)
-myImagePlot(M.table)
+plotSampleSimilarity(M.table)
 dev.off()
 
 paste("Plotting total_compared.pdf")
