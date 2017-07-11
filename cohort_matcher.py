@@ -679,7 +679,9 @@ def parseArguments(argv):
 def plotResults(config):
     logger.info("Plotting results")
     reportTopMatches = os.path.dirname(os.path.realpath(__file__)) + '/reportTopMatches.r'
-    cmd = [config.Rscript, "--vanilla", reportTopMatches, config.report_file]
+    resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
+    cmd = [config.Rscript, "--vanilla", reportTopMatches, resultsFile]
+    logger.debug("Running %s", ' '.join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
