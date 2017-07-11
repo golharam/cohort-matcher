@@ -647,6 +647,10 @@ def parseArguments(argv):
                              default="./cohort-matcher-output",
                              help="Specify output directory for sample comparisons \
                              (Default: ./cohort-matcher-output)")
+    parser_grp8.add_argument("--output-prefix", required=False,
+                             default="cohort-matcher-results",
+                             help="Output filename prefix \
+                             (Default: cohort-matcher-results)")
     parser_grp8.add_argument("--short-output", "-so", required=False, default=False,
                              action="store_true", help="Short output format (Default: False")
     parser_grp8.add_argument("--report-file", required=False, default="cohort-matcher-results.txt",
@@ -887,10 +891,12 @@ CONCLUSION:
 
 def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, classification):
     ''' print out grand matrix '''
-    logger.info("Writing similarity matrix to {}".format(config.report_file))
-    logger.info("Writing total_compared matrix to total_compared.txt")
-    with open(config.report_file, "w") as fout:
-        with open('total_compared.txt', "w") as f_tot_compared:
+    resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
+    totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
+    logger.info("Writing similarity matrix to %s", resultsFile)
+    logger.info("Writing total_compared matrix to %s", totalComparedFile)
+    with open(resultsFile, "w") as fout:
+        with open(totalComparedFile, "w") as f_tot_compared:
             for sample1 in sampleSet1:
                 fout.write("\t" + sample1["name"])
                 f_tot_compared.write("\t" + sample1["name"])
@@ -907,5 +913,15 @@ def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, to
                 fout.write("\n")
                 f_tot_compared.write("\n")
     
+    meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
+    logger.info("Writing melted results to %s", meltedResultsFile)
+    with open(meltedResultsFile, "w") as fout:
+            fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\n")
+            for sample1 in sampleSet1:
+                for sample2 in sampleSet2:
+                    fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+                    tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+                    fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc)
+
 if __name__ == "__main__":
     main(sys.argv[1:])
