@@ -216,7 +216,8 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     frac_common_matrix = {}
     total_compared_matrix = {}
-    classification = {}
+    short_judgement = {}
+    judgement = {}
     if os.path.exists(config.report_file) is True:
         logger.warn("%s already exists.  Skipping this step.", config.report_file)
         return
@@ -242,11 +243,13 @@ def compareSamples(sampleSet1, sampleSet2, config):
             if sample1["name"] not in frac_common_matrix:
                 frac_common_matrix[sample1["name"]] = {}
                 total_compared_matrix[sample1["name"]] = {}
-                classification[sample1["name"]] = {}
+                short_judgement[sample1["name"]] = {}
+                judgement[sample1["name"]] = {}
             frac_common_matrix[sample1["name"]][sample2["name"]] = results['frac_common']
             total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
-            classification[sample1["name"]][sample2["name"]] =  results['short_judgement']
-    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, classification)
+            short_judgement[sample1["name"]][sample2["name"]] =  results['short_judgement']
+            judgement[sample1["name"]][sample2["name"]] =  results['judgement']
+    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, judgement)
 
 def downloadBAMFile(bamFile, config):
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
@@ -889,7 +892,7 @@ CONCLUSION:
         else:
             fout.write(std_report_str)
 
-def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, classification):
+def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, judgement):
     ''' print out grand matrix '''
     resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
@@ -916,12 +919,13 @@ def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, to
     meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
     logger.info("Writing melted results to %s", meltedResultsFile)
     with open(meltedResultsFile, "w") as fout:
-            fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\n")
+            fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tJudgement\n")
             for sample1 in sampleSet1:
                 for sample2 in sampleSet2:
                     fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
                     tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
-                    fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc)
+                    j = judgement[sample1["name"]][sample2["name"]]
+                    fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+j+"\n")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
