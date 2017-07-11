@@ -114,6 +114,10 @@ plotNumSNPsCompared <- function(x, ...) {
                 # level trace
                 trace='none',
 
+                # Row/Column Labeling
+                cexRow=0.5,
+                cexCol=0.5,
+
                 # color key + density info
                 density.info='histogram',
                 denscol="black",
