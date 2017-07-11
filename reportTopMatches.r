@@ -1,3 +1,5 @@
+library(gplots)
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   cohort_matcher_results <- "cohort-matcher-results.txt"
@@ -117,9 +119,9 @@ plotNumSNPsCompared <- function(x, ...) {
                 denscol="black",
                 key.title="Frequency Distribution of Number of SNPs Compared between Samples",
                 key.xlab = "# of SNPs",
-                key.ylab = "# of Sample Comparisons",
-                #( "bottom.margin", "left.margin", "top.margin", "right.margin" )
-                key.par=list(mar=c(4, 3.5, 3.5, 3)),
+                key.ylab = "# of Samples Compared",
+                #( "bottom", "left", "top", "right" )
+                key.par=list(mar=c(5.1, 4.1, 4.1, 2.1)),
 
                 # plot labels
                 main="Sample Similarity",
@@ -157,8 +159,8 @@ plotNumSNPsCompared <- function(x, ...) {
                 # The default is c(1.5,4) for both. If you change lmat you'll either have to or probably
                 # want to change these as well. For the above example, if we want to keep all the other
                 # elements the same size, but want a thin color key at the bottom, we might set
-                lwid = c(0.1, 5),
-                lhei = c(0.5, 4.5, 1.5))
+                lwid = c(0.1, 5.4),
+                lhei = c(0.5, 3, 1.5))
 
                 # This will plot a heatmap with the column dendrogram above the heatmap, the row dendrogram
                 # to the left, and the key underneath. Unfortunately the headings and the labels for the
@@ -188,7 +190,7 @@ plotNumSNPsCompared <- function(x, ...) {
                 symkey=FALSE,
                 key.title="Frequency Distribution of Number of SNPs Compared between Samples",
                 key.xlab = "# of SNPs",
-                key.ylab = "# of Sample Comparisons",
+                key.ylab = "# of Samples Compared",
                 #( "bottom.margin", "left.margin", "top.margin", "left.margin" )
                 key.par=list(mar=c(3.5,0,3,0)),
 
@@ -213,15 +215,9 @@ plotNumSNPsCompared <- function(x, ...) {
 paste("Writing top matches in topmatches.txt", sep=" ")
 reportTopMatches(table)
 
-M.table <- as.matrix(table)
 pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
 pdf(pdfFile)
-plotSampleSimilarity(M.table)
-dev.off()
-
-paste("Plotting total_compared.pdf")
-library(gplots)
-pdf("total_compared.pdf")
-plotNumSNPsCompared(data.matrix(total_compared))
+plotSampleSimilarity(as.matrix(table))
+plotNumSNPsCompared(total_compared)
 dev.off()
