@@ -680,7 +680,8 @@ def plotResults(config):
     logger.info("Plotting results")
     reportTopMatches = os.path.dirname(os.path.realpath(__file__)) + '/reportTopMatches.r'
     resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
-    cmd = [config.Rscript, "--vanilla", reportTopMatches, resultsFile]
+    totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
+    cmd = [config.Rscript, "--vanilla", reportTopMatches, resultsFile, totalComparedFile]
     logger.debug("Running %s", ' '.join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
