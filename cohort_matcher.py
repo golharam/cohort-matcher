@@ -459,7 +459,7 @@ def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
                 pool.apply_async(genotypeSample, (sample["name"], sample["bam"], reference,
                                                   vcf, intervalsFile, config))
         else:
-            logger.info("{}: Skipping, TSV already present.", sample["name"])
+            logger.info("%s: Skipping, TSV already present.", sample["name"])
     pool.close()
     pool.join()
 
