@@ -97,21 +97,21 @@ def checkReference(sample, localBamFile, reference, vcfFile):
     bam_chroms = get_chrom_names_from_BAM(localBamFile)
     logger.debug("BAM chromosomes: %s", bam_chroms)
 
-    REF_CHROMS = get_chrom_names_from_REF(reference)
-    logger.debug("REF chromosomes: %s", REF_CHROMS)
+    ref_chroms = get_chrom_names_from_REF(reference)
+    logger.debug("REF chromosomes: %s", ref_chroms)
 
-    if set(REF_CHROMS).issubset(set(bam_chroms)) is False:
-        bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
+    if set(ref_chroms).issubset(set(bam_chroms)) is False:
+        bamREF_dff = set(ref_chroms).difference(set(bam_chroms))
         logger.error("Sample BAM %s contains chromosomes not in reference %s: %s",
                      sample, reference, bamREF_dff)
         return False
 
     # Make sure the VCF file and the BAM file have matching chromosome names
-    VCF_chroms = get_chrom_names_from_VCF(vcfFile)
-    logger.debug("VCF chromosomes: %s", VCF_chroms)
+    vcf_chroms = get_chrom_names_from_VCF(vcfFile)
+    logger.debug("VCF chromosomes: %s", vcf_chroms)
 
-    if set(VCF_chroms).issubset(set(bam_chroms)) is False:
-        bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
+    if set(vcf_chroms).issubset(set(bam_chroms)) is False:
+        bamVCF_diff = set(vcf_chroms).difference(set(bam_chroms))
         logger.error("Sample VCF %s contains chromosomes not in BAM %s: %s",
                      sample, vcfFile, bamVCF_diff)
         return False
@@ -241,7 +241,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
             intersection = getIntersectingVariants(var_list, var_list2,
                                                    default_chroms, alternate_chroms)
 
-            # compare the genotypes 
+            # compare the genotypes
             results = compareGenotypes(var_list, var_list2, intersection,
                                        alternate_chroms, def_to_alt)
             logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
@@ -262,15 +262,17 @@ def compareSamples(sampleSet1, sampleSet2, config):
                           total_compared_matrix, judgement)
 
 def downloadBAMFile(bamFile, config):
+    ''' Download bamFile from S3 '''
+
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
     if os.path.exists(localBamFile):
-        logger.debug("Using cached bam file: {}".format(localBamFile))
+        logger.debug("Using cached bam file: %s", localBamFile)
     else:
         if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
             logger.error("File does not exist or is inaccessible in Amazon.")
             return None
 
-    ''' If the index is already downloaded, use it '''
+    # If the index is already downloaded, use it
     bamIndex1 = bamFile.rstrip(".bam") + ".bai"
     bamIndex2 = bamFile + ".bai"
     localBamIndex1 = localBamFile.rstrip(".bam") + ".bai"
@@ -282,15 +284,15 @@ def downloadBAMFile(bamFile, config):
     elif os.path.exists(localBamIndex2):
         localBamIndex = localBamIndex2
     else:
-        ''' Else, try to download index '''
+        # Else, try to download index
         if downloadFileFromAmazon(bamIndex1, config.scratch_dir, config):
             localBamIndex = localBamIndex1
         else:
-            ''' Try to download index 2 '''
+            # Try to download index 2
             if downloadFileFromAmazon(bamIndex2, config.scratch_dir, config):
                 localBamIndex = localBamIndex2
             else:
-                logger.debug("Could not find matching bam index.  Generating...")
+                logger.debug("Could not find matching bam index. Generating...")
                 cmd = [config.samtools, 'index', localBamFile]
                 p = subprocess.Popen(cmd)
                 p.wait()
@@ -301,11 +303,12 @@ def downloadBAMFile(bamFile, config):
     return localBamFile, localBamIndex
 
 def downloadFileFromAmazon(srcFile, destDirectory, config):
+    ''' Download file from S3 '''
     if isFileInAmazon(srcFile, config) is False:
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
-    logger.info("Downloading file: {}".format(srcFile))
+    logger.info("Downloading file: %s", srcFile)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
@@ -340,6 +343,7 @@ def get_chrom_names_from_REF(ref_fasta):
     return chrom_list
 
 def get_chrom_data_from_map(chrom_map_file):
+    ''' Get mapping of chr names '''
     chrom_ct = 0
     default_chroms = []
     alternate_chroms = []
@@ -347,7 +351,7 @@ def get_chrom_data_from_map(chrom_map_file):
     alt_to_def = {}
 
     with open(chrom_map_file, 'r') as fin:
-        header = fin.readline()
+        fin.readline()
         for line in fin:
             if line.strip() == "":
                 continue
@@ -406,7 +410,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
     This function calls the actual genotype to generate a vcf, then
     converts the vcf to tsv file.
     '''
-    logger.info("Genotyping {}".format(sample))
+    logger.info("Genotyping %s", sample)
 
     deleteBam = False
     outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
@@ -424,7 +428,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             exit(1)
 
         if config.caller == 'freebayes':
-            logger.debug("{}: Calling freebayes".format(sample))
+            logger.debug("%s: Calling freebayes", sample)
             cmd = [config.freebayes_path, "--fasta-reference", reference, "--targets",
                    intervalsFile, "--no-indels", "--min-coverage", str(config.dp_threshold),
                    "--report-all-haplotype-alleles", "--report-monomorphic", "--vcf",
@@ -438,14 +442,14 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
                 os.remove(outputVcf)
                 exit(1)
             if os.path.exists(outputVcf) is False:
-                logger.error("Output VCF file, {}, could not be found in cache.".format(outputVcf))
+                logger.error("Output VCF file, %s, could not be found in cache.", outputVcf)
                 exit(1)
         else:
             logger.error("other callers not yet supported")
             exit(1)
 
     # Convert the vcf to tsv
-    logger.debug("{}: Convert VCF to TSV".format(sample))
+    logger.debug("%s: Convert VCF to TSV", sample)
     out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
     if os.path.exists(out_tsv) is False:
         VCFtoTSV(outputVcf, out_tsv, config.caller)
@@ -455,13 +459,15 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
         os.remove(localBamFile)
         os.remove(localBamIndex)
 
-    logger.info("{}: Done".format(sample))
+    logger.info("%s: Done", sample)
     return None
 
 def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
+    ''' Genotypes samples '''
     pool = multiprocessing.Pool(config.max_jobs)
-    for sampleIndex in range(len(sampleSet)):
-        sample = sampleSet[sampleIndex]
+    #for sampleIndex in range(len(sampleSet)):
+    for sample in sampleSet:
+        #sample = sampleSet[sampleIndex]
         tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if os.path.exists(tsvFile) is False:
             if config.max_jobs == 1:
@@ -476,31 +482,25 @@ def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
     pool.join()
 
 def is_hom(gt):
+    ''' Test for homozygosity '''
     gt_ = gt.split("/")
-    if gt_[0] == gt_[1]:
-        return True
-    else:
-        return False
+    return gt_[0] == gt_[1]
 
 def is_same_gt(gt1, gt2):
+    ''' Check is same genotype '''
     if gt1 == gt2:
         return True
-    else:
-        gt1_ = sorted(gt1.split("/"))
-        gt2_ = sorted(gt2.split("/"))
-        if gt1_ == gt2_:
-            return True
-        else:
-            return False
+    gt1_ = sorted(gt1.split("/"))
+    gt2_ = sorted(gt2.split("/"))
+    return gt1_ == gt2_
 
 def is_subset(hom_gt, het_gt):
+    ''' Test if hom_gt is subset of het_gt '''
     gt_hom = hom_gt.split("/")[0]
-    if gt_hom in het_gt:
-        return True
-    else:
-        return False
+    return gt_hom in het_gt
 
 def isFileInAmazon(srcFile, config):
+    ''' Check if a file is in S3 '''
     cmd = [config.aws, "s3", "ls", srcFile]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -513,6 +513,7 @@ def isFileInAmazon(srcFile, config):
     return False
 
 def main(argv):
+    ''' Main Entry Point '''
     config = parseArguments(argv)
     logging.basicConfig(level=config.log_level)
     logger.info("cohort-matcher")
@@ -605,6 +606,7 @@ genomic positions for comparison."""
     return judgement, short_judgement
 
 def parseArguments(argv):
+    ''' Parse Arguments '''
     parser = argparse.ArgumentParser(description="Compare two sets cohorts of bam files \
         to see if they are from the same samples, using frequently occuring SNPs \
         reported in the 1000Genome database")
@@ -673,24 +675,24 @@ def parseArguments(argv):
     parser_grp8.add_argument("--report-file", required=False, default="cohort-matcher-results.txt",
                              help="Specify name of similarity matrix file \
                              (Default: ./cohort-master-results.txt)")
-    '''
     # Freebayes options
-    parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
-                             action="store_true", help="Use --targets option for Freebayes.")
+    #parser_grp3.add_argument("--fastfreebayes",  "-FF", required=False, default=False,
+    #                         action="store_true", help="Use --targets option for Freebayes.")
     # GATK options
-    parser_grp3.add_argument("--gatk-mem-gb" ,   "-GM", required=False,
-                             type=int, help="Specify Java heap size for GATK (GB, int)")
-    parser_grp3.add_argument("--gatk-nt" ,   "-GT", required=False,
-                             type=int, help="Specify number of threads for GATK UnifiedGenotyper \
-                             (-nt option)")
+    #parser_grp3.add_argument("--gatk-mem-gb" ,   "-GM", required=False,
+    #                         type=int, help="Specify Java heap size for GATK (GB, int)")
+    #parser_grp3.add_argument("--gatk-nt" ,   "-GT", required=False,
+    #                         type=int, help="Specify number of threads for GATK UnifiedGenotyper \
+    #                         (-nt option)")
     # VarScan Options
-    parser_grp3.add_argument("--varscan-mem-gb", "-VM", required=False,
-                             type=int, help="Specify Java heap size for VarScan2 (GB, int)")
-    '''
+    #parser_grp3.add_argument("--varscan-mem-gb", "-VM", required=False,
+    #                         type=int, help="Specify Java heap size for VarScan2 (GB, int)")
+
     args = parser.parse_args(argv)
     return args
 
 def plotResults(config):
+    ''' Plot results '''
     logger.info("Plotting results")
     reportTopMatches = os.path.dirname(os.path.realpath(__file__)) + '/reportTopMatches.r'
     resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
@@ -731,7 +733,7 @@ def readSamples(sampleSheetFile):
     logger.info("Read %d samples.", len(samples))
     return samples
 
-def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
+def vcfToIntervals(vcfFile, bedFile, window=0, caller="freebayes", cmap=None):
     '''
     Convert a vcf file to a 3-column interval/bed file
     '''
@@ -750,12 +752,12 @@ def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
                 continue
             else:
                 chrom_ = cmap[var.CHROM]
-        if format == "gatk" or format == "varscan":
+        if caller == "gatk" or caller == "varscan":
             start_pos = var.POS - window
             end_pos = start_pos + window
             fout.write("%s:%d-%d\n" % (chrom_, start_pos, end_pos))
         # BED format
-        elif format == "bed" or format == "freebayes":
+        elif caller == "bed" or caller == "freebayes":
             start_pos = var.POS - window - 1
             end_pos = start_pos + window + 1
             fout.write("%s\t%d\t%d\n" % (chrom_, start_pos, end_pos))
@@ -784,7 +786,7 @@ def VCFtoTSV(invcf, outtsv, caller):
             qual_ = str(var.samples[0]["GQ"])
 
         dp_ = "0"
-        ad_or_ao = "NA"
+        #ad_or_ao = "NA"
         ad_str = "NA"
         gt_ = "NA"
         alt_str = ""
@@ -839,6 +841,7 @@ def VCFtoTSV(invcf, outtsv, caller):
     return var_ct
 
 def writeSampleComparisonReport(sample1, sample2, config, results):
+    ''' Write sample comparison report '''
     # unpack values used in this function
     total_compared = results['total_compared']
     ct_common = results['ct_common']
