@@ -1,4 +1,6 @@
-f [ ! -d python_env ]; then
+#!/bin/bash
+
+if [ ! -d python_env ]; then
   virtualenv python_env
 fi
 source python_env/bin/activate
