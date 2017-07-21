@@ -1,15 +1,34 @@
-# BAM-matcher #
+[![Build Status](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-build/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
+[![Code Grade](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-grade/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
+[![Coverage](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-coverage/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
 
-A simple tool for determining whether two [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same sample or patient by counting genotype matches at common SNPs.
+# cohort-matcher #
+
+A simple tool for determining whether two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs. cohort-matcher is build on BAM-matcher.
 
 BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exome-sequencing (WES) and RNA-sequencing (RNA-seq) human data, but can also be customised to compare panel data or non-human data.
 
-Once configuration file is setup, to compare two bam files (sample1.bam and sample2.bam) just run:
+To compare two cohorts, run:
 ```
-bam-matcher.py -B1 sample1.bam -B2 sample2.bam
+/ngs/apps/Python-2.7.8/bin/python /ngs/apps/bam-matcher/cohort_matcher.py \
+        --set1 cohort1.txt --set2 cohort2.txt \
+        --cache-dir `pwd`/cache --scratch-dir /scratch \
+        --caller freebayes \
+        --vcf /ngs/apps/bam-matcher/hg19.exome.highAF.7550.vcf \
+        --reference /ngs/reference/hg19/hg19.fa \
+        --freebayes-path /ngs/apps/freebayes/bin/freebayes \
+        --aws /usr/bin/aws \
+        --Rscript /ngs/apps/R-3.2.2/bin/Rscript \
+        --samtools /ngs/apps/samtools-0.1.19/samtools \
+        --output-dir output
 ```
 
-which will give an output like:
+which will output a series of files indicating sample similarity include:
+cohort-matcher-results.txt
+cohort-matcher-results.pdf
+topmatches.txt
+meltedResults.txt
+and sample-sample comparison reports like in the cache directory:
 ```
 
 BAM1:	sample1.bam 
