@@ -9,5 +9,5 @@ pip install -U nose mock pysam pyvcf numpy
 pip install -U fisher
 pip install -U coverage pylint backports.functools-lru-cache singledispatch enum34 configparser
 
-python_env/bin/nosetests --with-coverage --cover-erase --cover-package cohort_matcher
-pylint -f parseable cohort_matcher.py > pylint.out
+python_env/bin/nosetests --with-coverage --cover-erase --cover-package cohort_matcher --cover-xml
+pylint -f parseable cohort_matcher.py | tee pylint.out
