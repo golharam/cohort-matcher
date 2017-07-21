@@ -19,76 +19,78 @@ def checkConfig(config):
     '''
     checkConfig makes sure all the parameters specified are valid
     '''
+    ok = True
     if os.path.isdir(config.cache_dir) is False:
         logger.error("Cache dir (%s) is not a directory", config.cache_dir)
-        return False
+        ok = False
     if os.path.isdir(config.scratch_dir) is False:
         logger.error("Scratch dir (%s) is not a directory", config.scratch_dir)
-        return False
+        ok = False
     if os.path.isdir(config.output_dir) is False:
         logger.error("Output directory (%s) does not exist", config.output_dir)
-        return False
+        ok = False
 
     if os.path.exists(config.vcf) is False:
         logger.error("VCF file (%s) is not accessible", config.vcf)
-        return False
+        ok = False
 
     if os.path.exists(config.reference) is False:
         logger.error("Reference FASTA file (%s) is not accessible", config.reference)
-        return False
+        ok = False
     reference_index = config.reference + ".fai"
     if os.path.exists(reference_index) is False:
         logger.error("Reference FASTA file (%s) is not indexed", reference_index)
-        return False
+        ok = False
 
     # If reference2, vcf2, or chromosome-map is specified, make sure all are specified and exist
-    if config.reference2 is not None or config.vcf2 is not None or config.chromosome_map is not None:
+    if config.reference2 is not None or config.vcf2 is not None or \
+       config.chromosome_map is not None:
 
         if config.reference2 is None:
             logger.error("Reference2 must be specified if vcf2 or chromosome-map is specified")
-            return False
+            ok = False
         elif config.vcf2 is None:
             logger.error("vcf2 must be specified if reference2 or chromosome-map is specified")
-            return False
+            ok = False
         elif config.chromosome_map is None:
             logger.error("Chromosome map must be specified is reference2 or vcf2 is specified")
-            return False
+            ok = False
 
         if os.path.exists(config.vcf2) is False:
             logger.error("VCF2 (%s) is not accessible", config.vcf2)
-            return False
+            ok = False
 
         if os.path.exists(config.reference2) is False:
             logger.error("Reference2 FASTA file (%s) is not accessible", config.reference2)
-            return False
+            ok = False
         reference2_index = config.reference2 + ".fai"
         if os.path.exists(reference2_index) is False:
             logger.error("Reference 2 FASTA file (%s) is not indexed", reference2_index)
-            return False
+            ok = False
 
         if os.path.exists(config.chromosome_map) is False:
             logger.error("Chromosome map (%s) could not be read", config.chromosome_map)
-            return False
+            ok = False
 
     if config.caller == "freebayes" and config.freebayes_path is None:
         logger.error("Freebayes-path must be set when caller is Freebayes")
-        return False
+        ok = False
 
     if os.path.exists(config.aws) is False:
         logger.error("Unable to locate AWS CLI: %s", config.aws)
-        return False
+        ok = False
 
     if os.path.exists(config.freebayes_path) is False:
         logger.error("Unable to locate caller: %s", config.freebayes_path)
-        return False
+        ok = False
 
     if os.path.exists(config.samtools) is False:
         logger.error("Unable to locate samtools: %s", config.samtools)
-        return False
+        ok = False
 
-    return True
+    return ok
 
-def checkReference(sample, localBamFile, reference, vcf):
+def checkReference(sample, localBamFile, reference, vcfFile):
     ''' Make sure the reference used BAM file is the same as
         the vcf file
     '''
@@ -98,24 +100,25 @@ def checkReference(sample, localBamFile, reference, vcf):
     REF_CHROMS = get_chrom_names_from_REF(reference)
     logger.debug("REF chromosomes: %s", REF_CHROMS)
 
-    if set(REF_CHROMS).issubset(set(bam_chroms)) == False:
+    if set(REF_CHROMS).issubset(set(bam_chroms)) is False:
         bamREF_dff = set(REF_CHROMS).difference(set(bam_chroms))
         logger.error("Sample BAM %s contains chromosomes not in reference %s: %s",
                      sample, reference, bamREF_dff)
         return False
 
-    ''' Make sure the VCF file and the BAM file have matching chromosome names '''
-    VCF_chroms = get_chrom_names_from_VCF(vcf)
+    # Make sure the VCF file and the BAM file have matching chromosome names
+    VCF_chroms = get_chrom_names_from_VCF(vcfFile)
     logger.debug("VCF chromosomes: %s", VCF_chroms)
 
-    if set(VCF_chroms).issubset(set(bam_chroms)) == False:
+    if set(VCF_chroms).issubset(set(bam_chroms)) is False:
         bamVCF_diff = set(VCF_chroms).difference(set(bam_chroms))
         logger.error("Sample VCF %s contains chromosomes not in BAM %s: %s",
-                     sample, vcf, bamVCF_diff)
+                     sample, vcfFile, bamVCF_diff)
         return False
     return True
 
 def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to_alt):
+    ''' Compare genotypes of two samples '''
     ct_common = 0
     comm_hom_ct = 0
     comm_het_ct = 0
@@ -147,7 +150,7 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
             if is_hom(gt1) and is_hom(gt2):
                 diff_hom_ct += 1
             # both are het and different
-            elif is_hom(gt1) == False and is_hom(gt2) == False:
+            elif is_hom(gt1) is False and is_hom(gt2) is False:
                 diff_het_ct += 1
             # one is hom, one is het, test for subset
             elif is_hom(gt1):
@@ -203,14 +206,17 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
     results['diff_1sub2_ct'] = diff_1sub2_ct
     results['diff_2sub1_ct'] = diff_2sub1_ct
     results['allele_subset'] = allele_subset
-    results['judgement'], results['short_judgement'] = makeJudgement(total_compared, frac_common,
-                                                                     frac_common_plus, allele_subset)
+    results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
+                                                                     frac_common,
+                                                                     frac_common_plus,
+                                                                     allele_subset)
     return results
 
 def compareSamples(sampleSet1, sampleSet2, config):
     ''' Compare all the samples against each other '''
     if config.chromosome_map:
-        default_chroms, alternate_chroms, def_to_alt, alt_to_def = get_chrom_data_from_map(config.chromosome_map)
+        default_chroms, alternate_chroms, \
+        def_to_alt, alt_to_def = get_chrom_data_from_map(config.chromosome_map)
     else:
         default_chroms, alternate_chroms, def_to_alt, alt_to_def = None, None, None, None
 
@@ -224,22 +230,25 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
-            logger.info("Comparing {} - {}".format(sample1["name"], sample2["name"]))
-            ''' Get a list of variants that pass in sample 1 '''
+            logger.info("Comparing %s - %s", sample1["name"], sample2["name"])
+            # Get a list of variants that pass in sample 1
             tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
             var_list = get_tsv_variants(tsv1, config.dp_threshold)
-            ''' then parse second tsv file to get list of variants that passed in both samples '''
+            # then parse second tsv file to get list of variants that passed in both samples
             tsv2 = os.path.join(config.cache_dir, sample2["name"] + ".tsv")
             var_list2 = get_tsv_variants(tsv2, config.dp_threshold)
 
-            intersection = getIntersectingVariants(var_list, var_list2, default_chroms, alternate_chroms)
+            intersection = getIntersectingVariants(var_list, var_list2,
+                                                   default_chroms, alternate_chroms)
 
-            ''' compare the genotypes '''
-            results = compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to_alt)
-            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'], results['short_judgement'])
+            # compare the genotypes 
+            results = compareGenotypes(var_list, var_list2, intersection,
+                                       alternate_chroms, def_to_alt)
+            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
+                        results['short_judgement'])
             writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
-            
-            ''' save to grand matrix '''
+
+            # save to grand matrix
             if sample1["name"] not in frac_common_matrix:
                 frac_common_matrix[sample1["name"]] = {}
                 total_compared_matrix[sample1["name"]] = {}
@@ -247,9 +256,10 @@ def compareSamples(sampleSet1, sampleSet2, config):
                 judgement[sample1["name"]] = {}
             frac_common_matrix[sample1["name"]][sample2["name"]] = results['frac_common']
             total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
-            short_judgement[sample1["name"]][sample2["name"]] =  results['short_judgement']
-            judgement[sample1["name"]][sample2["name"]] =  results['judgement']
-    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, judgement)
+            short_judgement[sample1["name"]][sample2["name"]] = results['short_judgement']
+            judgement[sample1["name"]][sample2["name"]] = results['judgement']
+    writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
+                          total_compared_matrix, judgement)
 
 def downloadBAMFile(bamFile, config):
     localBamFile = os.path.join(config.scratch_dir, os.path.basename(bamFile))
@@ -291,7 +301,7 @@ def downloadBAMFile(bamFile, config):
     return localBamFile, localBamIndex
 
 def downloadFileFromAmazon(srcFile, destDirectory, config):
-    if isFileInAmazon(srcFile, config) == False:
+    if isFileInAmazon(srcFile, config) is False:
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
@@ -304,7 +314,7 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
         return None
 
     localFile = os.path.join(destDirectory, os.path.basename(srcFile))
-    if os.access(localFile, os.R_OK) == False:
+    if os.access(localFile, os.R_OK) is False:
         return None
 
     return localFile
@@ -368,7 +378,7 @@ def getIntersectingVariants(var_list, var_list2, alternate_chroms, alt_to_def):
             var_ = alt_to_def[bits[0]] + "\t" + bits[1]
         else:
             var_ = var2
-        
+
         if var_ in var_list:
             intersection.append(var_)
 
@@ -393,7 +403,7 @@ def get_tsv_variants(tsvFile, dp_threshold):
 
 def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
     '''
-    This function calls the actual genotype to generate a vcf, then 
+    This function calls the actual genotype to generate a vcf, then
     converts the vcf to tsv file.
     '''
     logger.info("Genotyping {}".format(sample))
@@ -423,24 +433,25 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             out, err = p.communicate()
             p.wait()
             if p.returncode != 0:
-                logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out, err)
+                logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out,
+                             err)
                 os.remove(outputVcf)
                 exit(1)
-            if os.path.exists(outputVcf) == False:
+            if os.path.exists(outputVcf) is False:
                 logger.error("Output VCF file, {}, could not be found in cache.".format(outputVcf))
                 exit(1)
         else:
             logger.error("other callers not yet supported")
             exit(1)
-            
+
     # Convert the vcf to tsv
     logger.debug("{}: Convert VCF to TSV".format(sample))
     out_tsv = os.path.join(config.cache_dir, sample + ".tsv")
-    if os.path.exists(out_tsv) == False:
+    if os.path.exists(out_tsv) is False:
         VCFtoTSV(outputVcf, out_tsv, config.caller)
 
     # Delete the bam/bai files if they were downloaded
-    if deleteBam == True:
+    if deleteBam is True:
         os.remove(localBamFile)
         os.remove(localBamIndex)
 
@@ -454,7 +465,8 @@ def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
         tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if os.path.exists(tsvFile) is False:
             if config.max_jobs == 1:
-                genotypeSample(sample["name"], sample["bam"], reference, vcf, intervalsFile, config)
+                genotypeSample(sample["name"], sample["bam"], reference, vcf, intervalsFile,
+                               config)
             else:
                 pool.apply_async(genotypeSample, (sample["name"], sample["bam"], reference,
                                                   vcf, intervalsFile, config))
@@ -540,7 +552,7 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     A_BIT_LOW = """the number of comparable genomic loci is a bit low.
 Try using a different variants list (--VCF) file which have more appropriate
 genomic positions for comparison."""
-    
+
     if total_compared <= 20:
         judgement = "Inconclusive: Too few loci to compare"
         short_judgement = "INCONCLUSIVE"
@@ -690,7 +702,7 @@ def plotResults(config):
     p.wait()
     if p.returncode != 0:
         logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out, err)
-                
+
 def readSamples(sampleSheetFile):
     '''
     readSamples reads in a sampleSheetFile consisting of two columns:
@@ -777,7 +789,7 @@ def VCFtoTSV(invcf, outtsv, caller):
         gt_ = "NA"
         alt_str = ""
 
-        if var.samples[0].called == False:
+        if var.samples[0].called is False:
             continue
 
         # usually need to bypass indels, however,
@@ -883,10 +895,10 @@ CONCLUSION:
     short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t
             Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t
             1sub-2het\t Conclusion
-            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % (sample1,
-                   sample2, config.dp_threshold, frac_common, ct_common, comm_hom_ct, comm_het_ct,
-                   ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct, diff_hom_het_ct,
-                   diff_hom_ct, diff_1sub2_ct, short_judgement)
+            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % \
+            (sample1, sample2, config.dp_threshold, frac_common, ct_common, comm_hom_ct,
+             comm_het_ct, ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct,
+             diff_hom_het_ct, diff_hom_ct, diff_1sub2_ct, short_judgement)
 
     REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
     if os.path.exists(REPORT_PATH) is False:
@@ -898,7 +910,8 @@ CONCLUSION:
         else:
             fout.write(std_report_str)
 
-def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, total_compared_matrix, judgement):
+def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
+                          total_compared_matrix, judgement):
     ''' print out grand matrix '''
     resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
@@ -921,17 +934,17 @@ def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix, to
                     f_tot_compared.write("\t" + s)
                 fout.write("\n")
                 f_tot_compared.write("\n")
-    
+
     meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
     logger.info("Writing melted results to %s", meltedResultsFile)
     with open(meltedResultsFile, "w") as fout:
-            fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tJudgement\n")
-            for sample1 in sampleSet1:
-                for sample2 in sampleSet2:
-                    fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
-                    tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
-                    j = judgement[sample1["name"]][sample2["name"]]
-                    fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+j+"\n")
+        fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tJudgement\n")
+        for sample1 in sampleSet1:
+            for sample2 in sampleSet2:
+                fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+                tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+                j = judgement[sample1["name"]][sample2["name"]]
+                fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+j+"\n")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

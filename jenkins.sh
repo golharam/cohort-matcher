@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash
 
 if [ ! -d python_env ]; then
   virtualenv python_env
