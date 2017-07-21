@@ -723,9 +723,10 @@ def vcfToIntervals(vcfFile, bedFile, window=0, format="freebayes", cmap=None):
     '''
     Convert a vcf file to a 3-column interval/bed file
     '''
-    if os.path.exists(bedFile) is True:
-        logger.info("%s already exists.", bedFile)
-        return
+    # Since bedFile is being written to cache, don't use the old one.
+    #if os.path.exists(bedFile) is True:
+    #    logger.info("%s already exists.", bedFile)
+    #    return
 
     vcf_read = vcf.Reader(open(vcfFile, "r"))
     fout = open(bedFile, "w")
