@@ -239,7 +239,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
             var_list2 = get_tsv_variants(tsv2, config.dp_threshold)
 
             intersection = getIntersectingVariants(var_list, var_list2,
-                                                   default_chroms, alternate_chroms)
+                                                   def_to_alt, alt_to_def)
 
             # compare the genotypes
             results = compareGenotypes(var_list, var_list2, intersection,
@@ -373,12 +373,12 @@ def get_chrom_names_from_VCF(vcf_file):
                 chrom_list.append(vcfRecord.CHROM)
     return chrom_list
 
-def getIntersectingVariants(var_list, var_list2, alternate_chroms, alt_to_def):
+def getIntersectingVariants(var_list, var_list2, def_to_alt, alt_to_def):
     ''' Given two tsv list of variants, find the intersection '''
     intersection = []
     for var2 in var_list2:
         bits = var2.split("\t")
-        if alternate_chroms is not None:
+        if alt_to_def is not None:
             var_ = alt_to_def[bits[0]] + "\t" + bits[1]
         else:
             var_ = var2

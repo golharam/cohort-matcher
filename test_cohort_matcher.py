@@ -5,8 +5,9 @@ from tempfile import NamedTemporaryFile
 import os
 import filecmp
 from cohort_matcher import checkConfig, compareGenotypes, is_same_gt, main, parseArguments, \
-     readSamples, vcfToIntervals, genotypeSamples, genotypeSample, compareSamples, \
-	 get_tsv_variants
+     readSamples, vcfToIntervals, genotypeSamples, genotypeSample, \
+     compareSamples, get_tsv_variants
+import cohort_matcher
 
 class TestCohortMatcher(unittest.TestCase):
     @patch('os.path.isdir')
@@ -160,7 +161,21 @@ class TestCohortMatcher(unittest.TestCase):
         # Check results
         self.assertEqual(len(variants), 5899)
         self.assertEqual(variants["chr1\t881627"], {'ALT': '.', 'GT': 'G/G', 'REF': 'G', 'DP': 50})
-    
+
+    def test_getIntersectingVariants(self):
+        # Set up test case
+        var_list = ['1\t1', '1\t2', '2\t4']
+        var_list2 = ['chr1\t1', 'chr1\t3', 'chr2\t4']
+        def_to_alt = {'1': 'chr1', '2': 'chr2'}
+        alt_to_def = {'chr1': '1', 'chr2': '2'}
+        # Set up supporting mocks
+        # Test
+        actual = cohort_matcher.getIntersectingVariants(var_list, var_list2,
+                                                        def_to_alt, alt_to_def)
+        # Check results
+        expected = ['1\t1', '2\t4']
+        self.assertEqual(actual, expected)
+            
     def test_is_same_gt(self):
         self.assertTrue(is_same_gt('A/A', 'A/A'))
         self.assertTrue(is_same_gt('C/T', 'C/T'))
