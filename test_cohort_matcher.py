@@ -49,8 +49,6 @@ class TestCohortMatcher(unittest.TestCase):
         # Check retults
         self.assertEqual(results['total_compared'], 8)
         self.assertEqual(results['ct_common'], 2)
-        #results['frac_common'] = frac_common
-        #results['frac_common_plus'] = frac_common_plus
         self.assertEqual(results['comm_hom_ct'], 1)
         self.assertEqual(results['comm_het_ct'], 1)
         self.assertEqual(results['ct_diff'], 6)
@@ -60,10 +58,38 @@ class TestCohortMatcher(unittest.TestCase):
         self.assertEqual(results['diff_het_hom_ct'], 1)
         self.assertEqual(results['diff_1sub2_ct'], 1)
         self.assertEqual(results['diff_2sub1_ct'], 1)
-        #results['allele_subset'] = allele_subset
-        #results['judgement'], results['short_judgement'] = makeJudgement(total_compared, frac_common,
-        #                                                             frac_common_plus, allele_subset)
-        
+
+    def test_compareGenotypes_altChroms(self):
+		# Set up test case
+        var_list = {'chr1\t1': {'GT': 'C/C'}, 'chr1\t2': {'GT': 'A/G'},
+                    'chr1\t3': {'GT': 'A/A'}, 'chr1\t4': {'GT': 'C/T'},
+                    'chr1\t5': {'GT': 'A/A'}, 'chr1\t6': {'GT': 'A/T'},
+                    'chr1\t7': {'GT': 'A/A'}, 'chr1\t8': {'GT': 'C/G'}}
+
+        var_list2 = {'1\t1': {'GT': 'C/C'}, '1\t2': {'GT': 'A/G'},
+                     '1\t3': {'GT': 'G/G'}, '1\t4': {'GT': 'A/G'},
+                     '1\t5': {'GT': 'C/T'}, '1\t6': {'GT': 'G/G'},
+                     '1\t7': {'GT': 'A/T'}, '1\t8': {'GT': 'C/C'}}
+        intersection = ['chr1\t1', 'chr1\t2', 'chr1\t3', 'chr1\t4', 'chr1\t5',
+                        'chr1\t6', 'chr1\t7', 'chr1\t8']
+        def_to_alt = {'chr1': '1'}
+        alt_chroms = ['1']
+		# Set up supporting mocks
+		# Test
+        results = compareGenotypes(var_list, var_list2, intersection, alt_chroms, def_to_alt)
+		# Check results
+        self.assertEqual(results['total_compared'], 8)
+        self.assertEqual(results['ct_common'], 2)
+        self.assertEqual(results['comm_hom_ct'], 1)
+        self.assertEqual(results['comm_het_ct'], 1)
+        self.assertEqual(results['ct_diff'], 6)
+        self.assertEqual(results['diff_hom_ct'], 1)
+        self.assertEqual(results['diff_het_ct'], 1)
+        self.assertEqual(results['diff_hom_het_ct'], 1)
+        self.assertEqual(results['diff_het_hom_ct'], 1)
+        self.assertEqual(results['diff_1sub2_ct'], 1)
+        self.assertEqual(results['diff_2sub1_ct'], 1)
+
     @patch('cohort_matcher.get_tsv_variants')
     @patch('cohort_matcher.getIntersectingVariants')
     @patch('cohort_matcher.compareGenotypes')

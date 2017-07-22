@@ -132,7 +132,9 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
         if alternate_chroms is not None:
-            gt2 = def_to_alt[pos_]
+            bits = pos_.split('\t')
+            gt2 = var_list2[def_to_alt[bits[0]] + "\t" + bits[1]]['GT']
+            #gt2 = def_to_alt[pos_]
         else:
             gt2 = var_list2[pos_]['GT']
         #gt1 = bam1_gt[pos_]
