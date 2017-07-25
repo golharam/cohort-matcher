@@ -13,8 +13,8 @@ table <- read.table(cohort_matcher_results, header=TRUE, row.names=1)
 paste("Reading", total_compared_file, sep=" ")
 total_compared <- read.table(total_compared_file, header=TRUE, row.names=1)
 
-reportTopMatches <- function(x, ...) {
-  f <- file("topmatches.txt", "w")
+reportTopMatches <- function(x, topMatchesFile, ...) {
+  f <- file(topMatchesFiles, "w")
   writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
   for (sample in rownames(x)) {
     sample_matches <- sort(x[sample,], decreasing=TRUE)
@@ -216,8 +216,9 @@ plotNumSNPsCompared <- function(x, ...) {
 
 # ----- END plot function ----- #
 
-paste("Writing top matches in topmatches.txt", sep=" ")
-reportTopMatches(table)
+topMatchesFile <- gsub(".txt", ".topmatches.txt", cohort_matcher_results)
+paste("Writing top matches in", topMatchesFile, sep=" ")
+reportTopMatches(table, topMatchesFile)
 
 pdfFile <- gsub(".txt", ".pdf", cohort_matcher_results)
 paste("Writing", pdfFile, sep=" ")
