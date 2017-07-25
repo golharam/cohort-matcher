@@ -552,9 +552,7 @@ def main(argv):
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     ''' Make judgement of sample similarity based on genotype comparison '''
-    A_BIT_LOW = """the number of comparable genomic loci is a bit low.
-Try using a different variants list (--VCF) file which have more appropriate
-genomic positions for comparison."""
+    A_BIT_LOW = "the number of comparable genomic loci is a bit low. Try using a different variants list (--VCF) file which have more appropriate genomic positions for comparison."
 
     if total_compared <= 20:
         judgement = "Inconclusive: Too few loci to compare"
@@ -589,17 +587,13 @@ genomic positions for comparison."""
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += """, but with possible allele specific genotype.\nBAM%s
-                genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq
-                data or BAM%s is contaminated. """ % (sub_, over_, sub_, over_)
+                judgement += ", but with possible allele specific genotype. BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated." % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "BAM FILES ARE FROM DIFFERENT SOURCES"
             short_judgement = "DIFFERENT"
         elif frac_common >= 0.8:
-            judgement = """LIKELY FROM THE SAME SOURCE. However, the fraction of sites
-            with common genotype is lower than expected. This can happen with samples
-            with low coverage."""
+            judgement = "LIKELY FROM THE SAME SOURCE. However, the fraction of sites with common genotype is lower than expected. This can happen with samples with low coverage."
             short_judgement = "LIKELY SAME"
         else:
             judgement = "LIKELY FROM DIFFERENT SOURCES"
