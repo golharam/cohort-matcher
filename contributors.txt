@@ -1,1 +1,3 @@
-Paul Wang
+Cohort-matcher by Ryan Golhar
+
+BAM-matcher by Paul Wang
