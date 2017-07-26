@@ -14,7 +14,7 @@ paste("Reading", total_compared_file, sep=" ")
 total_compared <- read.table(total_compared_file, header=TRUE, row.names=1)
 
 reportTopMatches <- function(x, topMatchesFile, ...) {
-  f <- file(topMatchesFiles, "w")
+  f <- file(topMatchesFile, "w")
   writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
   for (sample in rownames(x)) {
     sample_matches <- sort(x[sample,], decreasing=TRUE)
