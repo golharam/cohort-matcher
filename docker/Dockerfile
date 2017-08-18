@@ -12,20 +12,40 @@ LABEL tags="Genomics"
 
 # System and library dependencies
 RUN apt-get -y update && \
-    apt-get -y install unzip && \
+    apt-get -y install unzip build-essential cmake zlib1g-dev libncurses-dev git && \
     apt-get clean
 
+# Get hg19
+RUN mkdir -p /ngs/reference/hg19/chromosomes
+RUN wget -O /ngs/reference/hg19/hg19.tar.gz \
+      http://hgdownload.cse.ucsc.edu/goldenpath/hg19/bigZips/chromFa.tar.gz
+RUN cd /ngs/reference/hg19/chromosomes && tar zxvf ../hg19.tar.gz && \
+    cat chr1.fa chr2.fa chr3.fa chr4.fa chr5.fa chr6.fa chr7.fa chr8.fa chr9.fa \
+        chr10.fa chr11.fa chr12.fa chr13.fa chr14.fa chr15.fa chr16.fa chr17.fa \
+        chr18.fa chr19.fa chr20.fa chr21.fa chr22.fa chrX.fa chrY.fa chrM.fa > ../hg19.fa
+RUN rm -rf /ngs/reference/hg19/hg19.tar.gz /ngs/reference/hg19/chromosomes
+# Get GRCh37
+RUN mkdir -p /ngs/reference/GRCh37
+RUN wget -O /ngs/reference/GRCh37/GRCh37.fa.gz \
+      ftp://ftp.ensembl.org/pub/release-75/fasta/homo_sapiens/dna/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa.gz && \
+    gunzip /ngs/reference/GRCh37/GRCh37.fa.gz
+
+# Install Freebayes
+RUN git config --global url.https://github.com/.insteadOf git://github.com/ && \
+    git clone --recursive git://github.com/ekg/freebayes.git
+RUN cd freebayes && make && make install
+
+# Install R
+ENV R_BASE_VERSION 3.4.1
+
 # Application installation
-RUN wget -O /cohort-matcher.zip \
-   https://github.com/golharam/cohort-matcher/archive/cohort-matcher.zip && \
-   unzip /cohort-matcher.zip && mv cohort-matcher-cohort-matcher cohort-matcher && \
-   rm /cohort-matcher.zip
+RUN git clone https://github.com/golharam/cohort-matcher.git
 
 # Other software dependencies
-RUN pip install numpy
+RUN pip install numpy awscli
 RUN pip install -r /cohort-matcher/requirements.txt
 
 # Application entry point
-RUN ln -s /cohort-matcher/cohort_matcher.py /cohort_matcher.py
+RUN ln -s /cohort-matcher/run_cohort_matcher.py /run_cohort_matcher.py
 
-ENTRYPOINT ["python", "cohort_matcher.py"]
+ENTRYPOINT ["python", "/run_cohort_matcher.py"]
