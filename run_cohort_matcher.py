@@ -1,12 +1,14 @@
 from __future__ import print_function
+''' This is a wrapper script for Docker '''
 
+import multiprocessing
 import os
 import shlex
 import subprocess
 from argparse import ArgumentParser
 
 from common_utils.s3_utils import download_file, upload_file, download_folder, upload_folder
-from common_utils.job_utils import generate_working_dir, delete_working_dir
+from common_utils.job_utils import generate_working_dir, delete_working_dir, uncompress
 
 
 def download_reference(s3_path, working_dir):
@@ -85,14 +87,31 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
     except Exception as e:
         pass
     
-    max_jobs = 
-    vcf =
-    ref =
-    cmd = '/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir . ' \
-          '--caller freebayes --max-jobs %d --vcf %s --reference %s ' \
+    max_jobs = multiprocessing.cpu_count()
+    if reference1 == 'hg19':
+        ref = os.path.join(working_dir, 'hg19.fa')
+        vcf = os.path.join(working_dir, 'hg19.exome.highAF.7550.vcf')
+        if reference2 == 'hg19':
+            ref2 = ''
+        else:
+            ref2 = '-R2 %s -V2 %s -CM %s' % (os.path.join(working_dir, 'GRCh37.fa'),
+                                             os.path.join(working_dir, '1kg.exome.highAF.7550.vcf'),
+                                             os.path.join(working_dir, 'hg19.chromosome_map')
+    else:
+        ref = os.path.join(working_dir, 'GRCh37.fa')
+        vcf = os.path.join(working_dir, '1kg.exome.highAF.7550.vcf')
+        if reference2 == 'GRCh37':
+            ref2 = ''
+        else:
+            ref2 = '-R2 %s -V2 %s -CM %s' % (os.path.join(working_dir, 'hg19.fa'),
+                                             os.path.join(working_dir, 'hg19.exome.highAF.7550.vcf'),
+                                             os.path.join(working_dir, 'hg19.chromosome_map')
+
+    cmd = '/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir %s ' \
+          '--caller freebayes --max-jobs %d -R %s -V %s %s ' \
           '--freebayes-path /usr/local/bin/freebayes --aws /usr/local/bin/aws ' \
-          --Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output_prefix %s
-          (bam_sheet1, bam_sheet2, cache_dir, max_jobs, vcf, ref, output_prefix)
+          '--Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output_prefix %s' % \
+          (bam_sheet1, bam_sheet2, cache_dir, working_dir, max_jobs, ref, vcf, ref2, output_prefix)
     print ("Running: %s" % cmd)
     subprocess.check_call(shlex.split(cmd))
     return working_dir
@@ -103,16 +122,16 @@ def parseArguments():
     file_path_group = argparser.add_argument_group(title='File paths')
     file_path_group.add_argument('--set1_s3_path', type=str, help='S3 path to first set of samples', required=True)
     file_path_group.add_argument('--set2_s3_path', type=str, help='S3 path to second set of samples', required=True)
-    file_path_group.add_argument('--set1_reference', type=str, help='Reference genome for set1', required=True)
-    file_path_group.add_argument('--set2_reference', type=str, help='Reference genome for set2', required=True)
-    file_path_group.add_argument('--output_s3_folder_path', type=str, help='S3 path for output files', required=True)
+    file_path_group.add_argument('--set1_reference', type=str, help='Reference genome for set1', required=True,
+				 choices=['hg19', 'GRCh37'])
+    file_path_group.add_argument('--set2_reference', type=str, help='Reference genome for set2', required=True,
+                                 choices=['hg19', 'GRCh37'])
+    file_path_group.add_argument('--s3_output_folder_path', type=str, help='S3 path for output files', required=True)
 
     run_group = argparser.add_argument_group(title='Run command args')
-    #run_group.add_argument('--memory', type=str, help='Memory for Isaac in GB', default='76')
-    #run_group.add_argument('--cmd_args', type=str, help='Arguments for Isaac', default=' ')
-    run_group.add_argument("--output_prefix', type=str, help='Output prefix')
+    run_group.add_argument('--output_prefix', type=str, help='Output prefix')
 
-    argparser.add_argument('--working_dir', type=str, default='/scratch')
+    argparser.add_argument('--working_dir', type=str, default='/scratch', help="Working directory (default: /scratch)")
 
     return argparser.parse_args()
 
@@ -125,11 +144,21 @@ def main():
     print ('Downloading bam sheets')
     set1_bamsheet = download_file(args.set1_s3_path, working_dir)
     set2_bamsheet = download_file(args.set2_s3_path, working_dir)
+
+    # Download reference bundles
+    if args.set1_reference == 'hg19' or args.set2_reference == 'hg19':
+        download_file('s3://bmsrd-ngs-repo/reference/hg19-cohort-matcher.tar.bz2', working_dir)
+        uncompress(os.path.join(working_dir, 'hg19-cohort-matcher.tar.bz2'), working_dir)
+    if args.set2_reference == 'GRCh37' or args.set2_reference == 'GRCh37':
+        download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', working_dir)
+        uncompress(os.path.join(working_dir, 'GRCh37-cohort-matcher.tar.bz2', working_dir)
+
+    # Run cohort-matcher
     print ('Running cohort-matcher')
-    output_folder_path = run_cohort_matcher(set1_bamsheet, set2_bamsheet, args.set1_reference, None,
-                                            working_dir, args.output_prefix)
+    output_folder_path = run_cohort_matcher(set1_bamsheet, set2_bamsheet, args.set1_reference,
+                                            args.set2_reference, working_dir, args.output_prefix)
     print ('Uploading results to %s' % args.output_s3_folder_path)
-    upload_bam(args.bam_s3_folder_path, bam_folder_path)
+    #upload_bam(args.bam_s3_folder_path, bam_folder_path)
     print('Cleaning up working dir')
     delete_working_dir(working_dir)
     print ('Completed')

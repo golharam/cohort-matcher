@@ -7,7 +7,7 @@ PROXY=
 all: build 
 
 build:
-	docker build ${PROXY} -t $(NAME):$(TAG) -t $(NAME):latest -f Dockerfile ../..
+	docker build --no-cache ${PROXY} -t $(NAME):$(TAG) -t $(NAME):latest -f Dockerfile ../..
 	#docker tag $(NAME):latest $(REGISTRY):latest
 	#docker tag $(NAME):$(TAG) $(REGISTRY):$(TAG)
 
@@ -16,7 +16,7 @@ push:
 	docker push $(REGISTRY):latest
 
 test:
-	docker run --rm -ti cohort-matcher /bin/bash
+	docker run --rm -ti --entrypoint "/bin/bash" cohort-matcher
 
 run:
 	docker run --rm -ti cohort-matcher

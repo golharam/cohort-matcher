@@ -1,8 +1,8 @@
 from __future__ import print_function
+import tarfile
 import os
 import shutil
 import uuid
-
 
 def generate_working_dir(working_dir_base):
     """
@@ -29,3 +29,13 @@ def delete_working_dir(working_dir):
         shutil.rmtree(working_dir)
     except Exception as e:
         print ('Can\'t delete %s' % working_dir)
+
+def uncompress(tarball, dest_dir):
+    """
+    Uncompresses a tarbar
+    :param tarball: path to tarball to uncompress
+    :param dest_dir: destination directory to uncompress to
+    """
+    tar = tarfile.open(tarball, "r")
+    tar.extractall(dest_dir)
+    tar.close()
