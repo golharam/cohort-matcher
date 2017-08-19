@@ -91,7 +91,7 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
     cmd = '/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir . ' \
           '--caller freebayes --max-jobs %d --vcf %s --reference %s ' \
           '--freebayes-path /usr/local/bin/freebayes --aws /usr/local/bin/aws ' \
-          --Rscript ... --samtools ... --output_prefix %s
+          --Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output_prefix %s
           (bam_sheet1, bam_sheet2, cache_dir, max_jobs, vcf, ref, output_prefix)
     print ("Running: %s" % cmd)
     subprocess.check_call(shlex.split(cmd))
