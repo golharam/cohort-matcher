@@ -151,7 +151,7 @@ def main():
         uncompress(os.path.join(working_dir, 'hg19-cohort-matcher.tar.bz2'), working_dir)
     if args.set2_reference == 'GRCh37' or args.set2_reference == 'GRCh37':
         download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', working_dir)
-        uncompress(os.path.join(working_dir, 'GRCh37-cohort-matcher.tar.bz2', working_dir)
+        uncompress(os.path.join(working_dir, 'GRCh37-cohort-matcher.tar.bz2', working_dir))
 
     # Run cohort-matcher
     print ('Running cohort-matcher')
