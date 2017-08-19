@@ -7,7 +7,7 @@ PROXY=
 all: build 
 
 build:
-	docker build --no-cache ${PROXY} -t $(NAME):$(TAG) -t $(NAME):latest -f Dockerfile ../..
+	docker build ${PROXY} -t $(NAME):$(TAG) -t $(NAME):latest -f Dockerfile ../..
 	#docker tag $(NAME):latest $(REGISTRY):latest
 	#docker tag $(NAME):$(TAG) $(REGISTRY):$(TAG)
 
