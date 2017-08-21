@@ -53,6 +53,7 @@ RUN pip install numpy awscli
 # Application installation
 COPY requirements.txt /tmp/
 RUN pip install -r /tmp/requirements.txt && \
+    pip install boto3 && \
     mkdir /cohort-matcher
 COPY cohort_matcher.py /cohort-matcher/
 COPY common_utils/* /cohort-matcher/common_utils/
