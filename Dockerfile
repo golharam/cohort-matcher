@@ -47,14 +47,17 @@ RUN wget -O /samtools-1.4.tar.bz2 \
   tar xvjf /samtools-1.4.tar.bz2 && rm /samtools-1.4.tar.bz2
 RUN cd /samtools-1.4 && make && make install
 
-# Application installation
-RUN git clone https://github.com/golharam/cohort-matcher.git
-
 # Other software dependencies
 RUN pip install numpy awscli
-RUN pip install -r /cohort-matcher/requirements.txt
+
+# Application installation
+#RUN git clone https://github.com/golharam/cohort-matcher.git
+COPY requirements.txt /tmp/
+#RUN pip install -r /tmp/cohort-matcher/requirements.txt
+#COPY cohort_matcher.py /cohort-matcher/
+#COPY common_utils/* /cohort-matcher/common_utils/
+#COPY reportTopMatches.r /cohort-matcher/
+#COPY run_cohort_matcher.py /cohort-matcher/
 
 # Application entry point
-RUN ln -s /cohort-matcher/docker/run_cohort_matcher.py /run_cohort_matcher.py
-
-ENTRYPOINT ["python", "/run_cohort_matcher.py"]
+#ENTRYPOINT ["python", "/cohort-matcher/run_cohort_matcher.py"]
