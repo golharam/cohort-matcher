@@ -10,8 +10,8 @@ all: build
 
 build:
 	docker build ${PROXY} -t ${REGISTRY}/$(NAME):$(VERSION) \
-		                  -t ${REGISTRY}/$(NAME):latest \
-						  -f Dockerfile .
+                          -t ${REGISTRY}/$(NAME):latest \
+                          -f Dockerfile .
 
 push:
 	aws ecr get-login --no-include-email --region us-east-1 | sh && \
