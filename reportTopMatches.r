@@ -226,3 +226,13 @@ pdf(pdfFile)
 plotSampleSimilarity(as.matrix(table))
 plotNumSNPsCompared(total_compared)
 dev.off()
+
+plotFile <- gsub(".txt", ".plot1.tiff", cohort_matcher_results)
+tiff(plotFile)
+plotSampleSimilarity(as.matrix(table))
+dev.off()
+plotFile <- gsub(".txt", ".plot2.tiff", cohort_matcher_results)
+tiff(plotFile)
+plotNumSNPsCompared(total_compared)
+dev.off()
+

@@ -271,7 +271,7 @@ def downloadBAMFile(bamFile, config):
         logger.debug("Using cached bam file: %s", localBamFile)
     else:
         if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
-            logger.error("File does not exist or is inaccessible in Amazon.")
+            logger.error("File (%s) does not exist or is inaccessible in Amazon.", bamFile)
             return None
 
     # If the index is already downloaded, use it
@@ -420,6 +420,8 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
         # Download the BAM file and index if they are not local
         if bamFile.startswith("s3://"):
             localBamFile, localBamIndex = downloadBAMFile(bamFile, config)
+            if localBamFile is None:
+                return
             deleteBam = True
         else:
             localBamFile = os.path.abspath(bamFile)
@@ -504,9 +506,11 @@ def is_subset(hom_gt, het_gt):
 def isFileInAmazon(srcFile, config):
     ''' Check if a file is in S3 '''
     cmd = [config.aws, "s3", "ls", srcFile]
+    logger.debug("Executing %s", cmd.join(" "))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
+    logger.debug("Received %s", out)
     lines = out.splitlines()
     for line in lines:
         fields = line.split()
