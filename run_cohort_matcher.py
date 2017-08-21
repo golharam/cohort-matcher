@@ -1,6 +1,7 @@
 from __future__ import print_function
 ''' This is a wrapper script for Docker '''
 
+import logging
 import multiprocessing
 import os
 import shlex
@@ -10,6 +11,8 @@ from argparse import ArgumentParser
 from common_utils.s3_utils import download_file, upload_file, download_folder, upload_folder
 from common_utils.job_utils import generate_working_dir, delete_working_dir, uncompress
 
+__version__ = "0.2"
+logger = logging.getLogger(__name__)
 
 def download_reference(s3_path, working_dir):
     """
@@ -107,61 +110,74 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
                                              os.path.join(working_dir, 'hg19.exome.highAF.7550.vcf'),
                                              os.path.join(working_dir, 'hg19.chromosome_map'))
 
-    cmd = '/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir %s ' \
+    cmd = '/cohort-matcher/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir %s ' \
           '--caller freebayes --max-jobs %d -R %s -V %s %s ' \
           '--freebayes-path /usr/local/bin/freebayes --aws /usr/local/bin/aws ' \
           '--Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output_prefix %s' % \
           (bam_sheet1, bam_sheet2, cache_dir, working_dir, max_jobs, ref, vcf, ref2, output_prefix)
-    print ("Running: %s" % cmd)
+    logger.info("Running: %s", cmd)
     subprocess.check_call(shlex.split(cmd))
     return working_dir
 
 def parseArguments():
     argparser = ArgumentParser()
+    argparser.add_argument('--log-level', help="Prints warnings to console by default",
+                           default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
     file_path_group = argparser.add_argument_group(title='File paths')
-    file_path_group.add_argument('--set1_s3_path', type=str, help='S3 path to first set of samples', required=True)
-    file_path_group.add_argument('--set2_s3_path', type=str, help='S3 path to second set of samples', required=True)
-    file_path_group.add_argument('--set1_reference', type=str, help='Reference genome for set1', required=True,
-				 choices=['hg19', 'GRCh37'])
-    file_path_group.add_argument('--set2_reference', type=str, help='Reference genome for set2', required=True,
-                                 choices=['hg19', 'GRCh37'])
-    file_path_group.add_argument('--s3_output_folder_path', type=str, help='S3 path for output files', required=True)
+    file_path_group.add_argument('--set1_s3_path', type=str, 
+                                 help='S3 path to first set of samples', required=True)
+    file_path_group.add_argument('--set2_s3_path', type=str, 
+                                 help='S3 path to second set of samples', required=True)
+    file_path_group.add_argument('--set1_reference', type=str, choices=['hg19', 'GRCh37'],
+                                 help='Reference genome for set1', required=True)
+    file_path_group.add_argument('--set2_reference', type=str, choices=['hg19', 'GRCh37'],
+                                 help='Reference genome for set2', required=True)
+    file_path_group.add_argument('--s3_output_folder_path', type=str, 
+                                 help='S3 path for output files', required=True)
 
     run_group = argparser.add_argument_group(title='Run command args')
     run_group.add_argument('--output_prefix', type=str, help='Output prefix')
 
-    argparser.add_argument('--working_dir', type=str, default='/scratch', help="Working directory (default: /scratch)")
+    argparser.add_argument('--working_dir', type=str, default='/scratch', 
+                           help="Working directory (default: /scratch)")
 
     return argparser.parse_args()
 
 def main():
     args = parseArguments()
+    logging.basicConfig(level=args.log_level)
+    logger.info("Run cohort-matcher Docker CLI v%s", __version__)
+    logger.info(args)
 
     working_dir = generate_working_dir(args.working_dir)
 
     # Download fastq files and reference files
-    print ('Downloading bam sheets')
+    logger.info('Downloading bam sheets')
     set1_bamsheet = download_file(args.set1_s3_path, working_dir)
     set2_bamsheet = download_file(args.set2_s3_path, working_dir)
 
     # Download reference bundles
     if args.set1_reference == 'hg19' or args.set2_reference == 'hg19':
+        logger.info("Downloading hg19 reference bundle")
         download_file('s3://bmsrd-ngs-repo/reference/hg19-cohort-matcher.tar.bz2', working_dir)
+        logger.info("Uncompressing hg19 reference bundle")
         uncompress(os.path.join(working_dir, 'hg19-cohort-matcher.tar.bz2'), working_dir)
     if args.set2_reference == 'GRCh37' or args.set2_reference == 'GRCh37':
+        logger.info("Downloading GRCh37 reference bundle")
         download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', working_dir)
+        logger.info("Uncompressing GRCh37 reference bundle")
         uncompress(os.path.join(working_dir, 'GRCh37-cohort-matcher.tar.bz2', working_dir))
 
     # Run cohort-matcher
-    print ('Running cohort-matcher')
+    logger.info('Running cohort-matcher')
     output_folder_path = run_cohort_matcher(set1_bamsheet, set2_bamsheet, args.set1_reference,
                                             args.set2_reference, working_dir, args.output_prefix)
-    print ('Uploading results to %s' % args.output_s3_folder_path)
+    logger.info('Uploading results to %s', args.output_s3_folder_path)
     #upload_bam(args.bam_s3_folder_path, bam_folder_path)
-    print('Cleaning up working dir')
+    logger.info('Cleaning up working dir')
     delete_working_dir(working_dir)
-    print ('Completed')
+    logger.info('Completed')
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 '''
 cohort_matcher - Compare genotypes of two cohorts of samples
 '''

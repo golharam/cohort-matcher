@@ -14,7 +14,7 @@ build:
 						  -f Dockerfile .
 
 push:
-	aws ec2 get-login --region us-east-1 | sh && \
+	aws ecr get-login --no-include-email --region us-east-1 | sh && \
 	docker push ${REGISTRY}/${NAME}:${VERSION} && \
 	docker push ${REGISTRY}/${NAME}:latest
 

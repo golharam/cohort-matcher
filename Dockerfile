@@ -55,6 +55,7 @@ COPY requirements.txt /tmp/
 RUN pip install -r /tmp/requirements.txt && \
     pip install boto3 && \
     mkdir /cohort-matcher
+VOLUME /scratch
 COPY cohort_matcher.py /cohort-matcher/
 COPY common_utils/* /cohort-matcher/common_utils/
 COPY reportTopMatches.r /cohort-matcher/
