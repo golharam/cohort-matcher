@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from common_utils.s3_utils import download_file, upload_file, download_folder, upload_folder
 from common_utils.job_utils import generate_working_dir, delete_working_dir, uncompress
 
-__version__ = "1.0"
+__version__ = "1.0.1"
 logger = logging.getLogger(__name__)
 
 def download_reference(s3_path, working_dir):
@@ -144,8 +144,8 @@ def parseArguments():
 
     argparser.add_argument('--working_dir', type=str, default='/scratch', 
                            help="Working directory (default: /scratch)")
-    argparser.add_argument('--max_jobs', type=int, default=1,
-                           help="Maximum # of parallel genotyping jobs")
+    argparser.add_argument('--max_jobs', type=int, default=None,
+                           help="Maximum # of parallel genotyping jobs (default: all cores")
 
     return argparser.parse_args()
 
@@ -176,9 +176,13 @@ def main():
 
     # Run cohort-matcher
     logger.info('Running cohort-matcher')
+    if args.max_jobs is None:
+        max_jobs = multiprocessing.cpu_count()
+    else:
+        max_jobs = args.max_jobs
     output_folder_path = run_cohort_matcher(args.log_level, set1_bamsheet, set2_bamsheet,
                                             args.set1_reference, args.set2_reference,
-                                            working_dir, args.output_prefix, args.max_jobs)
+                                            working_dir, args.output_prefix, max_jobs)
     logger.info('Uploading results to %s', args.s3_output_folder_path)
     #upload_bam(args.bam_s3_folder_path, bam_folder_path)
     logger.info('Cleaning up working dir')
