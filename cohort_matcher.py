@@ -468,10 +468,9 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
 
 def genotypeSamples(sampleSet, reference, vcf, intervalsFile, config):
     ''' Genotypes samples '''
+    logger.info("Genotyping samples in %d threads", config.max_jobs)
     pool = multiprocessing.Pool(config.max_jobs)
-    #for sampleIndex in range(len(sampleSet)):
     for sample in sampleSet:
-        #sample = sampleSet[sampleIndex]
         tsvFile = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if os.path.exists(tsvFile) is False:
             if config.max_jobs == 1:
