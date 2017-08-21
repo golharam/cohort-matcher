@@ -14,6 +14,7 @@ import vcf
 from fisher import pvalue
 
 logger = logging.getLogger(__name__)
+__version__ = "1.0"
 
 def checkConfig(config):
     '''
@@ -316,12 +317,15 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
     p.wait()
 
     if p.returncode != 0:
+        logger.error("Download failed.")
         return None
 
     localFile = os.path.join(destDirectory, os.path.basename(srcFile))
     if os.access(localFile, os.R_OK) is False:
+        logger.error("Download completed, but file is not locally accessible.")
         return None
 
+    logger.info("Download complete.")
     return localFile
 
 def get_chrom_names_from_BAM(bam_file):
@@ -505,7 +509,7 @@ def is_subset(hom_gt, het_gt):
 def isFileInAmazon(srcFile, config):
     ''' Check if a file is in S3 '''
     cmd = [config.aws, "s3", "ls", srcFile]
-    logger.debug("Executing %s", cmd.join(" "))
+    logger.debug("Executing %s", "".join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
@@ -521,7 +525,7 @@ def main(argv):
     ''' Main Entry Point '''
     config = parseArguments(argv)
     logging.basicConfig(level=config.log_level)
-    logger.info("cohort-matcher")
+    logger.info("cohort-matcher v%s" % __version__)
     logger.info(config)
 
     if checkConfig(config) is False:

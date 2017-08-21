@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from common_utils.s3_utils import download_file, upload_file, download_folder, upload_folder
 from common_utils.job_utils import generate_working_dir, delete_working_dir, uncompress
 
-__version__ = "0.2"
+__version__ = "1.0"
 logger = logging.getLogger(__name__)
 
 def download_reference(s3_path, working_dir):
@@ -72,7 +72,8 @@ def upload_bam(bam_s3_path, local_folder_path):
 
     upload_folder(bam_s3_path, local_folder_path)
 
-def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_dir, output_prefix):
+def run_cohort_matcher(log_level, bam_sheet1, bam_sheet2, reference1, reference2, working_dir,
+    output_prefix, max_jobs):
     """
     Runs Cohort-matcher
     :param bam_sheet1: local path to bam sheet1
@@ -91,7 +92,6 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
     except Exception as e:
         pass
     
-    max_jobs = multiprocessing.cpu_count()
     if reference1 == 'hg19':
         ref = os.path.join(working_dir, 'hg19.fa')
         vcf = os.path.join(working_dir, 'hg19.exome.highAF.7550.vcf')
@@ -115,7 +115,7 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
           '--scratch-dir %s --caller freebayes --max-jobs %d -R %s -V %s %s ' \
           '--freebayes-path /usr/local/bin/freebayes --aws /usr/local/bin/aws ' \
           '--Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools -O %s --output-prefix %s' % \
-          (args.log_level, bam_sheet1, bam_sheet2, cache_dir, working_dir, max_jobs, ref, vcf, ref2,
+          (log_level, bam_sheet1, bam_sheet2, cache_dir, working_dir, max_jobs, ref, vcf, ref2,
            working_dir, output_prefix)
     logger.info("Running: %s", cmd)
     subprocess.check_call(shlex.split(cmd))
@@ -144,6 +144,8 @@ def parseArguments():
 
     argparser.add_argument('--working_dir', type=str, default='/scratch', 
                            help="Working directory (default: /scratch)")
+    argparser.add_argument('--max_jobs', type=int, default=1,
+                           help="Maximum # of parallel genotyping jobs")
 
     return argparser.parse_args()
 
@@ -174,8 +176,9 @@ def main():
 
     # Run cohort-matcher
     logger.info('Running cohort-matcher')
-    output_folder_path = run_cohort_matcher(set1_bamsheet, set2_bamsheet, args.set1_reference,
-                                            args.set2_reference, working_dir, args.output_prefix)
+    output_folder_path = run_cohort_matcher(args.log_level, set1_bamsheet, set2_bamsheet,
+                                            args.set1_reference, args.set2_reference,
+                                            working_dir, args.output_prefix, args.max_jobs)
     logger.info('Uploading results to %s', args.s3_output_folder_path)
     #upload_bam(args.bam_s3_folder_path, bam_folder_path)
     logger.info('Cleaning up working dir')
