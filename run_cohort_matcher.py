@@ -176,7 +176,7 @@ def main():
     logger.info('Running cohort-matcher')
     output_folder_path = run_cohort_matcher(set1_bamsheet, set2_bamsheet, args.set1_reference,
                                             args.set2_reference, working_dir, args.output_prefix)
-    logger.info('Uploading results to %s', args.output_s3_folder_path)
+    logger.info('Uploading results to %s', args.s3_output_folder_path)
     #upload_bam(args.bam_s3_folder_path, bam_folder_path)
     logger.info('Cleaning up working dir')
     delete_working_dir(working_dir)
