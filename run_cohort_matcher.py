@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 ''' This is a wrapper script for Docker '''
 
@@ -113,7 +114,7 @@ def run_cohort_matcher(bam_sheet1, bam_sheet2, reference1, reference2, working_d
     cmd = '/cohort-matcher/cohort_matcher.py --set1 %s --set2 %s --cache-dir %s --scratch-dir %s ' \
           '--caller freebayes --max-jobs %d -R %s -V %s %s ' \
           '--freebayes-path /usr/local/bin/freebayes --aws /usr/local/bin/aws ' \
-          '--Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output_prefix %s' % \
+          '--Rscript /usr/bin/Rscript --samtools /usr/local/bin/samtools --output-prefix %s' % \
           (bam_sheet1, bam_sheet2, cache_dir, working_dir, max_jobs, ref, vcf, ref2, output_prefix)
     logger.info("Running: %s", cmd)
     subprocess.check_call(shlex.split(cmd))
@@ -137,7 +138,8 @@ def parseArguments():
                                  help='S3 path for output files', required=True)
 
     run_group = argparser.add_argument_group(title='Run command args')
-    run_group.add_argument('--output_prefix', type=str, help='Output prefix')
+    run_group.add_argument('--output_prefix', type=str, default='cohort-matcher-results',
+                           help='Output prefix')
 
     argparser.add_argument('--working_dir', type=str, default='/scratch', 
                            help="Working directory (default: /scratch)")
