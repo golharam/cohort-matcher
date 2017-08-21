@@ -19,7 +19,7 @@ push:
 	docker push ${REGISTRY}/${NAME}:latest
 
 test:
-	docker run --rm -ti --entrypoint "/bin/bash" cohort-matcher
+	docker run --rm -ti --entrypoint "/bin/bash" ${REGISTRY}/${NAME}:latest
 
 run:
-	docker run --rm -ti cohort-matcher
+	docker run --rm -ti ${REGISTRY}/${NAME}:latest 
