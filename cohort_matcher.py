@@ -231,6 +231,17 @@ def compareSamples(sampleSet1, sampleSet2, config):
         logger.warn("%s already exists.  Skipping this step.", config.report_file)
         return
 
+    # Make sure all the samples have been genotyped
+	ok = True
+	for sample in sampleSet1,sampleSet2:
+	    tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
+		if not os.path.exists(tsv):
+            logger.error("%s: TSV files does not exist", sample)
+			ok = False
+	if not ok:
+		logger.error("Not all samples genotyped.")
+		return
+
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
             logger.info("Comparing %s - %s", sample1["name"], sample2["name"])
@@ -698,7 +709,7 @@ def plotResults(config):
     ''' Plot results '''
     logger.info("Plotting results")
     reportTopMatches = os.path.dirname(os.path.realpath(__file__)) + '/reportTopMatches.r'
-    resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
+    resultsFile = "{}.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
     cmd = [config.Rscript, "--vanilla", reportTopMatches, resultsFile, totalComparedFile]
     logger.debug("Running %s", ' '.join(cmd))
@@ -919,7 +930,7 @@ CONCLUSION:
 def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
                           total_compared_matrix, judgement):
     ''' print out grand matrix '''
-    resultsFile = "{}.cohort-matcher-results.txt".format(config.output_prefix)
+    resultsFile = "{}.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
     logger.info("Writing similarity matrix to %s", resultsFile)
     logger.info("Writing total_compared matrix to %s", totalComparedFile)
