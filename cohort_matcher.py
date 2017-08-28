@@ -234,7 +234,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
     # Make sure all the samples have been genotyped
     ok = True
     sampleSheet = sampleSet1 + sampleSet2
-    for sample in sampleSet
+    for sample in sampleSet:
         tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if not os.path.exists(tsv):
             logger.error("%s: TSV files does not exist", sample)
@@ -566,11 +566,11 @@ def main(argv):
     else:
         genotypeSamples(sampleSet2, config.reference2, config.vcf2, intervalsFile2, config)
 
-	if compareSamples(sampleSet1, sampleSet2, config) is True:
+    if compareSamples(sampleSet1, sampleSet2, config) is True:
         plotResults(config)
         return 0
-	else:
-		return 1
+    else:
+        return 1
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     ''' Make judgement of sample similarity based on genotype comparison '''
