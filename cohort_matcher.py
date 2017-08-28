@@ -233,7 +233,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     # Make sure all the samples have been genotyped
     ok = True
-    sampleSheet sampleSet1 + sampleSet2
+    sampleSheet = sampleSet1 + sampleSet2
     for sample in sampleSet
         tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if not os.path.exists(tsv):
