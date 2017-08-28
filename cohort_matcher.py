@@ -229,18 +229,19 @@ def compareSamples(sampleSet1, sampleSet2, config):
     judgement = {}
     if os.path.exists(config.report_file) is True:
         logger.warn("%s already exists.  Skipping this step.", config.report_file)
-        return
+        return True
 
     # Make sure all the samples have been genotyped
     ok = True
-    for sample in sampleSet1,sampleSet2:
+    sampleSheet sampleSet1 + sampleSet2
+    for sample in sampleSet
         tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
         if not os.path.exists(tsv):
             logger.error("%s: TSV files does not exist", sample)
             ok = False
     if not ok:
         logger.error("Not all samples genotyped.")
-        return
+        return False
 
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
@@ -274,6 +275,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
             judgement[sample1["name"]][sample2["name"]] = results['judgement']
     writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
                           total_compared_matrix, judgement)
+    return True
 
 def downloadBAMFile(bamFile, config):
     ''' Download bamFile from S3 '''
@@ -564,9 +566,11 @@ def main(argv):
     else:
         genotypeSamples(sampleSet2, config.reference2, config.vcf2, intervalsFile2, config)
 
-    compareSamples(sampleSet1, sampleSet2, config)
-    plotResults(config)
-    return 0
+	if compareSamples(sampleSet1, sampleSet2, config) is True:
+        plotResults(config)
+        return 0
+	else:
+		return 1
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     ''' Make judgement of sample similarity based on genotype comparison '''
