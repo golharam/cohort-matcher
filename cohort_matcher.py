@@ -232,15 +232,15 @@ def compareSamples(sampleSet1, sampleSet2, config):
         return
 
     # Make sure all the samples have been genotyped
-	ok = True
-	for sample in sampleSet1,sampleSet2:
-	    tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
-		if not os.path.exists(tsv):
+    ok = True
+    for sample in sampleSet1,sampleSet2:
+        tsv = os.path.join(config.cache_dir, sample["name"] + ".tsv")
+        if not os.path.exists(tsv):
             logger.error("%s: TSV files does not exist", sample)
-			ok = False
-	if not ok:
-		logger.error("Not all samples genotyped.")
-		return
+            ok = False
+    if not ok:
+        logger.error("Not all samples genotyped.")
+        return
 
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
