@@ -324,21 +324,21 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
-    logger.info("Downloading file: %s", srcFile)
+    logger.debug("Downloading file: %s", srcFile)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
 
     if p.returncode != 0:
-        logger.error("Download failed.")
+        logger.error("Download %s failed.", srcFile)
         return None
 
     localFile = os.path.join(destDirectory, os.path.basename(srcFile))
     if os.access(localFile, os.R_OK) is False:
-        logger.error("Download completed, but file is not locally accessible.")
+        logger.error("Download %s completed, but file is not locally (%s) accessible.", srcFile, localFile)
         return None
 
-    logger.info("Download complete.")
+    logger.debug("Download %s complete.", srcFile)
     return localFile
 
 def get_chrom_names_from_BAM(bam_file):
