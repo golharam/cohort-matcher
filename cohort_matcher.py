@@ -92,22 +92,22 @@ def checkConfig(config):
     return ok
 
 def checkReference(sample, localBamFile, reference, vcfFile):
-    ''' Make sure the reference used BAM file is the same as
-        the vcf file
-    '''
+    ''' Make sure the BAM reference contains the same chromosomes as in the vcf file '''
     bam_chroms = get_chrom_names_from_BAM(localBamFile)
     logger.debug("BAM chromosomes: %s", bam_chroms)
 
     ref_chroms = get_chrom_names_from_REF(reference)
     logger.debug("REF chromosomes: %s", ref_chroms)
 
-    if set(ref_chroms).issubset(set(bam_chroms)) is False:
-        bamREF_dff = set(ref_chroms).difference(set(bam_chroms))
+    # The bam should be a subset of the reference chromosomes.
+    if set(bam_chroms).issubset(set(ref_chroms)) is False:
+        bamREF_dff = set(bam_chroms).difference(set(ref_chroms))
         logger.error("Sample BAM %s contains chromosomes not in reference %s: %s",
                      sample, reference, bamREF_dff)
         return False
 
     # Make sure the VCF file and the BAM file have matching chromosome names
+    # The vcf should be a subset of the bam
     vcf_chroms = get_chrom_names_from_VCF(vcfFile)
     logger.debug("VCF chromosomes: %s", vcf_chroms)
 
@@ -429,7 +429,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
     This function calls the actual genotype to generate a vcf, then
     converts the vcf to tsv file.
     '''
-    logger.info("Genotyping %s", sample)
+    logger.info("%s: Genotyping", sample)
 
     deleteBam = False
     outputVcf = os.path.join(config.cache_dir, sample + ".vcf")
@@ -444,7 +444,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             localBamFile = os.path.abspath(bamFile)
 
         # Make sure BAM and reference have matching chromosomes
-        logger.debug("Checking %s against reference", sample)
+        logger.debug("%s: Checking reference", sample)
         if checkReference(sample, localBamFile, reference, vcf) is False:
             exit(1)
 

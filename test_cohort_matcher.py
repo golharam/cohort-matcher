@@ -105,7 +105,7 @@ class TestCohortMatcher(unittest.TestCase):
         config = MagicMock(name="config", dp_threshold=10, chromosome_map=None,
                            cache_dir='test_data', scratch_dir='/scratch')
         # Set up supporting mocks
-        mock_exists.return_value = False
+        mock_exists.side_effect = [False, True, True]
         # Test
         compareSamples(sampleSet1, sampleSet2, config)
         # Check results
@@ -222,6 +222,7 @@ class TestCohortMatcher(unittest.TestCase):
         # Set up test case
         argv = []
         # Set up supporting mocks
+        mock_compareSamples.return_value = True
         # Test
         with patch('logging.basicConfig') as mock_basicConfig:
             retval = main(argv)
