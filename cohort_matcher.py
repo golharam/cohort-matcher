@@ -286,7 +286,7 @@ def downloadBAMFile(bamFile, config):
     else:
         if downloadFileFromAmazon(bamFile, config.scratch_dir, config) is None:
             logger.error("File (%s) does not exist or is inaccessible in Amazon.", bamFile)
-            return None
+            return None, None
 
     # If the index is already downloaded, use it
     bamIndex1 = bamFile.rstrip(".bam") + ".bai"
@@ -324,7 +324,7 @@ def downloadFileFromAmazon(srcFile, destDirectory, config):
         return None
 
     cmd = [config.aws, "s3", "cp", srcFile, destDirectory]
-    logger.debug("Downloading file: %s", srcFile)
+    logger.debug("Executing %s", cmd)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
