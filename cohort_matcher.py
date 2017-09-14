@@ -716,12 +716,12 @@ def plotResults(config):
     resultsFile = "{}.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
     cmd = [config.Rscript, "--vanilla", reportTopMatches, resultsFile, totalComparedFile]
-    logger.debug("Running %s", ' '.join(cmd))
+    logger.debug("Executing %s", cmd)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     p.wait()
     if p.returncode != 0:
-        logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out, err)
+        logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", cmd, out, err)
 
 def readSamples(sampleSheetFile):
     '''
