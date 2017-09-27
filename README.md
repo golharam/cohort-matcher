@@ -42,6 +42,17 @@ CONCLUSION: DIFFERENT SOURCES
 
 ----------------------------
 
+# Cohort-mather # 
+
+A tool to compare a cohort of samples (whereas bam-matcher does two specific samples).  cohort-matcher uses Grid Engine to distribute the workflow of genotyping samples.
+
+To run
+```
+cohort-matcher --bamlist1 <bamfile_set1> --bamlist2 <bamfile_set2> --config <config_file>
+```
+where bamfile_set1 and bamfile_set2 are two lists of bamfiles (in s3 or local) to be compared against each other.
+
+----------------------------
 
 # A Brief Installation Guide #
 
