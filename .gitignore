@@ -1,1 +1,11 @@
 python_env
+.project
+.pydevproject
+
+*.pyc
+python_env/
+
+.coverage
+cover/
+pylint.out
+coverage.xml
