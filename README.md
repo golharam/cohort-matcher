@@ -77,6 +77,7 @@ Bioinformatics 2016
 [doi: 10.1093/bioinformatics/btw239](http://bioinformatics.oxfordjournals.org/content/early/2016/05/01/bioinformatics.btw239.abstract)
 
 
-# Who do I talk to? #
+# Contact #
 
-Paul (paul.wang @ sa.gov.au)
+Ryan Golhar ryan dot golhar at bms dot com
+

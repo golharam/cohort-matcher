@@ -178,14 +178,16 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
         frac_common = float(ct_common)/total_compared
         frac_common_plus = float(ct_common + max(diff_2sub1_ct,
                                                  diff_1sub2_ct))/total_compared
-
+        pv_set = pvalue(
     # test of allele-specific genotype subsets
     allele_subset = ""
     sub_sum = diff_1sub2_ct + diff_2sub1_ct
+    pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
+    pv_ = min(pv_set.left_tail, pv_set.right_tail)
     # don't bother if fewer than 10
     if sub_sum > 10:
-        pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
-        pv_ = min(pv_set.left_tail, pv_set.right_tail)
+        #pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
+        #pv_ = min(pv_set.left_tail, pv_set.right_tail)
         if pv_ < 0.05:
             if diff_1sub2_ct < diff_2sub1_ct:
                 allele_subset = "2sub1"
@@ -209,6 +211,7 @@ def compareGenotypes(var_list, var_list2, intersection, alternate_chroms, def_to
     results['diff_1sub2_ct'] = diff_1sub2_ct
     results['diff_2sub1_ct'] = diff_2sub1_ct
     results['allele_subset'] = allele_subset
+    results['pvalue'] = pv_
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
@@ -225,6 +228,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     frac_common_matrix = {}
     total_compared_matrix = {}
+    pvalue_matrix = {}
     short_judgement = {}
     judgement = {}
     if os.path.exists(config.report_file) is True:
@@ -259,22 +263,24 @@ def compareSamples(sampleSet1, sampleSet2, config):
             # compare the genotypes
             results = compareGenotypes(var_list, var_list2, intersection,
                                        alternate_chroms, def_to_alt)
-            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
-                        results['short_judgement'])
+            logger.info("\t%.4f / %d - %s (%f)", results['frac_common'], results['total_compared'],
+                        results['short_judgement'], results['pvalue'])
             writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
 
             # save to grand matrix
             if sample1["name"] not in frac_common_matrix:
                 frac_common_matrix[sample1["name"]] = {}
                 total_compared_matrix[sample1["name"]] = {}
+                pvalue_matrix[sample1["name"]] = {}
                 short_judgement[sample1["name"]] = {}
                 judgement[sample1["name"]] = {}
             frac_common_matrix[sample1["name"]][sample2["name"]] = results['frac_common']
             total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
+            pvalue_matrix[sample1["name"]][sample2["name"]] = results['pvalue']
             short_judgement[sample1["name"]][sample2["name"]] = results['short_judgement']
             judgement[sample1["name"]][sample2["name"]] = results['judgement']
     writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
-                          total_compared_matrix, judgement)
+                          total_compared_matrix, pvalue_matrix, judgement)
     return True
 
 def downloadBAMFile(bamFile, config):
@@ -875,6 +881,7 @@ def writeSampleComparisonReport(sample1, sample2, config, results):
     diff_2sub1_ct = results['diff_2sub1_ct']
     judgement = results['judgement']
     short_judgement = results['short_judgement']
+    pvalue = results['pvalue']
     # so pad numeric string to 6 spaces
     diff_hom = ("%d" % diff_hom_ct).rjust(5)
     diff_het = ("%d" % diff_het_ct).rjust(5)
@@ -907,22 +914,29 @@ ________________________________________
 
 Total sites compared: %d
 Fraction of common: %f (%d/%d)
+P-value: %f
 ________________________________________
 CONCLUSION:
 %s"""  % (sample1, sample2, config.vcf, config.dp_threshold,
-          ct_common, comm_hom_ct, comm_het_ct, ct_diff, diff_het, diff_hom_het,
-          diff_1sub2, diff_het_hom, diff_hom, diff_2sub1, total_compared,
-          frac_common, ct_common, total_compared, judgement)
+          ct_common, comm_hom_ct, comm_het_ct,
+          ct_diff, 
+          diff_het, diff_hom_het, diff_1sub2, 
+          diff_het_hom, diff_hom, 
+          diff_2sub1, 
+          total_compared,
+          frac_common, ct_common, total_compared, 
+          pvalue,
+          judgement)
     short_report_str = """# sample1\t sample2\t DP_thresh\t FracCommon\t Same\t Same_hom\t
             Same_het\t Different\t 1het-2het\t 1het-2hom\t 1het-2sub\t 1hom-2het\t 1hom-2hom\t
-            1sub-2het\t Conclusion
-            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s""" % \
+            1sub-2het\t P-value\t Conclusion
+            %s\t%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s""" % \
             (sample1, sample2, config.dp_threshold, frac_common, ct_common, comm_hom_ct,
              comm_het_ct, ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct,
-             diff_hom_het_ct, diff_hom_ct, diff_1sub2_ct, short_judgement)
+             diff_hom_het_ct, diff_hom_ct, diff_1sub2_ct, pvalue, short_judgement)
 
     REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
-    if os.path.exists(REPORT_PATH) is False:
+    if os.path.exists(config.output_dir) is False:
         return
 
     with open(REPORT_PATH, "w") as fout:
@@ -932,40 +946,49 @@ CONCLUSION:
             fout.write(std_report_str)
 
 def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
-                          total_compared_matrix, judgement):
+                          total_compared_matrix, pvalue_matrix, judgement):
     ''' print out grand matrix '''
     resultsFile = "{}.txt".format(config.output_prefix)
     totalComparedFile = "{}.total_compared.txt".format(config.output_prefix)
+    pvalueFile = "{}.pvalue.txt".format(config.output_prefix)
     logger.info("Writing similarity matrix to %s", resultsFile)
     logger.info("Writing total_compared matrix to %s", totalComparedFile)
+    logger.info("Writing pvalue matrix to %s", pvalueFile)
     with open(resultsFile, "w") as fout:
         with open(totalComparedFile, "w") as f_tot_compared:
-            for sample1 in sampleSet1:
-                fout.write("\t" + sample1["name"])
-                f_tot_compared.write("\t" + sample1["name"])
-            fout.write("\n")
-            f_tot_compared.write("\n")
-            for sample2 in sampleSet2:
-                fout.write(sample2["name"])
-                f_tot_compared.write(sample2["name"])
+            with open(pvalueFile, "w") as f_pvalue:
                 for sample1 in sampleSet1:
-                    s = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
-                    fout.write("\t" + s)
-                    s = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
-                    f_tot_compared.write("\t" + s)
+                    fout.write("\t" + sample1["name"])
+                    f_tot_compared.write("\t" + sample1["name"])
+                    f_pvalue.write("\t" + sample1["name"])
                 fout.write("\n")
                 f_tot_compared.write("\n")
-
+                f_pvalue.write("\n")
+                for sample2 in sampleSet2:
+                    fout.write(sample2["name"])
+                    f_tot_compared.write(sample2["name"])
+                    f_pvalue.write(sample2["name"])
+                    for sample1 in sampleSet1:
+                        s = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+                        fout.write("\t" + s)
+                        s = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+                        f_tot_compared.write("\t" + s)
+                        s = '%f' % pvalue_matrix[sample1["name"]][sample2["name"]]
+                        f_pvalue.write("\t" + s)
+                    fout.write("\n")
+                    f_tot_compared.write("\n")
+                    f_pvalue.write("\n")
     meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
     logger.info("Writing melted results to %s", meltedResultsFile)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tJudgement\n")
+        fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tP-Value\tJudgement\n")
         for sample1 in sampleSet1:
             for sample2 in sampleSet2:
                 fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
                 tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+                pv = '%f' % pvalue_matrix[sample1["name"]][sample2["name"]]
                 j = judgement[sample1["name"]][sample2["name"]]
-                fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+j+"\n")
+                fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+pv+"\t"+j+"\n")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
