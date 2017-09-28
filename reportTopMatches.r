@@ -3,7 +3,7 @@ library(gplots)
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   cohort_matcher_results <- "cohort-matcher-results.txt"
-  total_compared_file <- "total_compared.txt"
+  total_compared_file <- "cohort-matcher-results.total_compared.txt"
 } else {
   cohort_matcher_results <- args[1]
   total_compared_file <- args[2]
