@@ -454,6 +454,9 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
         # Make sure BAM and reference have matching chromosomes
         logger.debug("%s: Checking reference", sample)
         if checkReference(sample, localBamFile, reference, vcf) is False:
+            if deleteBam is True:
+                os.remove(localBamFile)
+                os.remove(localBamIndex)
             exit(1)
 
         if config.caller == 'freebayes':
@@ -469,12 +472,21 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
                 logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out,
                              err)
                 os.remove(outputVcf)
+                if deleteBam is True:
+                    os.remove(localBamFile)
+                    os.remove(localBamIndex)
                 exit(1)
             if os.path.exists(outputVcf) is False:
                 logger.error("Output VCF file, %s, could not be found in cache.", outputVcf)
+                if deleteBam is True:
+                    os.remove(localBamFile)
+                    os.remove(localBamIndex)
                 exit(1)
         else:
             logger.error("other callers not yet supported")
+            if deleteBam is True:
+                os.remove(localBamFile)
+                os.remove(localBamIndex)
             exit(1)
 
     # Convert the vcf to tsv
