@@ -90,6 +90,10 @@ def checkConfig(config):
         logger.error("Unable to locate samtools: %s", config.samtools)
         ok = False
 
+    if os.path.exists(config.Rscript) is False:
+        logger.error("Unable to location Rscript: %s", config.Rscript)
+        ok = False
+
     return ok
 
 def checkReference(sample, localBamFile, reference, vcfFile):
