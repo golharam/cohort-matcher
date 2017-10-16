@@ -1,7 +1,7 @@
-FROM python:2.7
+FROM centos:7
 
 # Metadata
-LABEL container.base.image="python:2.7"
+LABEL container.base.image="centos:7"
 LABEL software.name="cohort-matcher"
 LABEL software.version="0.1"
 LABEL software.description="NGS Sample matching pipeline"
@@ -11,9 +11,8 @@ LABEL software.license="CCL 4.0"
 LABEL tags="Genomics"
 
 # System and library dependencies
-RUN apt-get -y update && \
-    apt-get -y install unzip build-essential cmake zlib1g-dev libncurses-dev git && \
-    apt-get clean
+#yum install -y gcc gcc-c++ git wget bzip2-devel xz-devel zlib-devel ncurses-devel
+yum install -y git make gcc zlib-devel bzip2-devel xz-devel gcc-c++ wget bzip2 ncurses-devel python2-pip python-devel
 
 # Get hg19
 #RUN mkdir -p /ngs/reference/hg19/chromosomes
@@ -34,32 +33,25 @@ RUN apt-get -y update && \
 RUN git config --global url.https://github.com/.insteadOf git://github.com/ && \
     git clone --recursive git://github.com/ekg/freebayes.git
 RUN cd freebayes && make && make install
+RUN rm -rf /freebayes
 
 # Install R
-## Use Debian unstable via pinning 
-RUN echo "deb http://http.debian.net/debian sid main" > /etc/apt/sources.list.d/debian-unstable.list
-ENV R_BASE_VERSION 3.4.1
-RUN apt-get -y update && apt-get -y install r-base=${R_BASE_VERSION}*
+yum install epel-release
+yum install -y R
 
 # Samtools
-RUN wget -O /samtools-1.4.tar.bz2 \
-  https://github.com/samtools/samtools/releases/download/1.4/samtools-1.4.tar.bz2 && \
-  tar xvjf /samtools-1.4.tar.bz2 && rm /samtools-1.4.tar.bz2
-RUN cd /samtools-1.4 && make && make install
+RUN wget https://github.com/samtools/samtools/releases/download/1.6/samtools-1.6.tar.bz2 && \
+    tar xvjf /samtools-1.6.tar.bz2 && \
+    rm -f /samtools-1.6.tar.bz2
+RUN cd /samtools-1.6 && make && make install
+RUN rm -rf /samtools-1.6
 
-# Other software dependencies
-RUN pip install numpy awscli
-
-# Application installation
-COPY requirements.txt /tmp/
-RUN pip install -r /tmp/requirements.txt && \
-    pip install boto3 && \
-    mkdir /cohort-matcher
+# cohort-matcher
+git clone https://github.com/golharam/cohort-matcher.git
+RUN cd cohort-matcher && \
+    pip install numpy && \
+    pip install -r requirements.txt
 VOLUME /scratch
-COPY cohort_matcher.py /cohort-matcher/
-COPY common_utils/* /cohort-matcher/common_utils/
-COPY reportTopMatches.r /cohort-matcher/
-COPY run_cohort_matcher.py /cohort-matcher/
 
 # Application entry point
 ENTRYPOINT ["python", "/cohort-matcher/run_cohort_matcher.py"]
