@@ -11,8 +11,8 @@ LABEL software.license="CCL 4.0"
 LABEL tags="Genomics"
 
 # System and library dependencies
-#yum install -y gcc gcc-c++ git wget bzip2-devel xz-devel zlib-devel ncurses-devel
-yum install -y git make gcc zlib-devel bzip2-devel xz-devel gcc-c++ wget bzip2 ncurses-devel python2-pip python-devel
+RUN yum install -y epel-release
+RUN yum install -y git make gcc zlib-devel bzip2-devel xz-devel gcc-c++ wget bzip2 ncurses-devel python-devel python2-pip
 
 # Get hg19
 #RUN mkdir -p /ngs/reference/hg19/chromosomes
@@ -36,8 +36,7 @@ RUN cd freebayes && make && make install
 RUN rm -rf /freebayes
 
 # Install R
-yum install epel-release
-yum install -y R
+RUN yum install -y R
 
 # Samtools
 RUN wget https://github.com/samtools/samtools/releases/download/1.6/samtools-1.6.tar.bz2 && \
@@ -47,9 +46,10 @@ RUN cd /samtools-1.6 && make && make install
 RUN rm -rf /samtools-1.6
 
 # cohort-matcher
-git clone https://github.com/golharam/cohort-matcher.git
+RUN git clone https://github.com/golharam/cohort-matcher.git
 RUN cd cohort-matcher && \
     pip install numpy && \
+    pip install boto3 && \
     pip install -r requirements.txt
 VOLUME /scratch
 

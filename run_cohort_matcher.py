@@ -123,7 +123,7 @@ def run_cohort_matcher(log_level, bam_sheet1, bam_sheet2, reference1, reference2
 
 def parseArguments():
     argparser = ArgumentParser()
-    argparser.add_argument('--log-level', help="Prints warnings to console by default",
+    argparser.add_argument('-l', '--log-level', help="Prints warnings to console by default",
                            default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
     file_path_group = argparser.add_argument_group(title='File paths')
@@ -156,6 +156,7 @@ def main():
     logger.info(args)
 
     working_dir = generate_working_dir(args.working_dir)
+    logger.debug("Working in %s", working_dir)
 
     # Download fastq files and reference files
     logger.info('Downloading bam sheets')
