@@ -46,15 +46,16 @@ RUN cd /samtools-1.6 && make && make install
 RUN rm -rf /samtools-1.6
 
 # cohort-matcher
-RUN git clone https://github.com/golharam/cohort-matcher.git
-RUN cd cohort-matcher && \
-    git pull && \
-    git checkout 63903e9
+VOLUME /scratch
+
 RUN pip install numpy && \
     pip install boto3 && \
-    pip install awscli && \
+    pip install awscli
+RUN git clone https://github.com/golharam/cohort-matcher.git && \
     pip install -r cohort-matcher/requirements.txt
-VOLUME /scratch
+RUN cd cohort-matcher && \
+    git pull && \
+    git checkout 13e4dd6
 
 # Application entry point
 ENTRYPOINT ["python", "/cohort-matcher/run_cohort_matcher.py"]
