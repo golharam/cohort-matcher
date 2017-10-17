@@ -50,6 +50,7 @@ RUN git clone https://github.com/golharam/cohort-matcher.git
 RUN cd cohort-matcher && \
     pip install numpy && \
     pip install boto3 && \
+    pip install awscli && \
     pip install -r requirements.txt
 VOLUME /scratch
 
