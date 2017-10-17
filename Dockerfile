@@ -37,6 +37,8 @@ RUN rm -rf /freebayes
 
 # Install R
 RUN yum install -y R
+RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile
+RUN Rscript -e "install.packages('gplots')"
 
 # Samtools
 RUN wget https://github.com/samtools/samtools/releases/download/1.6/samtools-1.6.tar.bz2 && \
