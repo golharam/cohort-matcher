@@ -10,6 +10,7 @@ docker run \
   -e "AWS_ACCESS_KEY_ID=$aws_access_key" \
   -e "AWS_SECRET_ACCESS_KEY=$aws_secret_access_key" \
   --privileged \
+  -v /scratch:/scratch
   483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher:latest \
   /bin/bash
 
