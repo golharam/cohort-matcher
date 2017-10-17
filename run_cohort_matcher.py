@@ -172,11 +172,14 @@ def main():
         download_file('s3://bmsrd-ngs-repo/reference/hg19-cohort-matcher.tar.bz2', refdir)
         logger.info("Uncompressing hg19 reference bundle")
         uncompress(os.path.join(refdir, 'hg19-cohort-matcher.tar.bz2'), refdir)
+        os.remove(os.path.join(refdir, 'hg19-cohort-matcher.tar.bz2'))
+
     if args.set2_reference == 'GRCh37' or args.set2_reference == 'GRCh37':
         logger.info("Downloading GRCh37 reference bundle")
         download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', refdir)
         logger.info("Uncompressing GRCh37 reference bundle")
         uncompress(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2', refdir))
+        os.remove(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'))
 
     # Run cohort-matcher
     logger.info('Running cohort-matcher')
