@@ -100,17 +100,17 @@ def run_cohort_matcher(log_level, bam_sheet1, bam_sheet2, reference1, reference2
             ref2 = ''
         else:
             ref2 = '-R2 %s -V2 %s -CM %s' % (os.path.join(ref_dir, 'GRCh37.fa'),
-                                             os.path.join(working_dir, '1kg.exome.highAF.7550.vcf'),
-                                             os.path.join(working_dir, 'hg19.chromosome_map'))
+                                             os.path.join(ref_dir, '1kg.exome.highAF.7550.vcf'),
+                                             os.path.join(ref_dir, 'hg19.chromosome_map'))
     else:
         ref = os.path.join(ref_dir, 'GRCh37.fa')
-        vcf = os.path.join(working_dir, '1kg.exome.highAF.7550.vcf')
+        vcf = os.path.join(ref_dir, '1kg.exome.highAF.7550.vcf')
         if reference2 == 'GRCh37':
             ref2 = ''
         else:
             ref2 = '-R2 %s -V2 %s -CM %s' % (os.path.join(ref_dir, 'hg19.fa'),
-                                             os.path.join(working_dir, 'hg19.exome.highAF.7550.vcf'),
-                                             os.path.join(working_dir, 'hg19.chromosome_map'))
+                                             os.path.join(ref_dir, 'hg19.exome.highAF.7550.vcf'),
+                                             os.path.join(ref_dir, 'hg19.chromosome_map'))
 
     cmd = '/cohort-matcher/cohort_matcher.py --log-level %s --set1 %s --set2 %s --cache-dir %s ' \
           '--scratch-dir %s --caller freebayes --max-jobs %d -R %s -V %s %s ' \
