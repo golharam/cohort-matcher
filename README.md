@@ -12,7 +12,7 @@ BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exo
 
 To compare two cohorts, run:
 
-Launch an ec2 instance running Docker (eg CentOS7), then execute the following (adjust parameters as needed:
+Launch an ec2 instance, then execute the following (adjust parameters as needed:
 ```
 /ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/cohort_matcher.py \
         --set1 cohort1.txt --set2 cohort2.txt \
