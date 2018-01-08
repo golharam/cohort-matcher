@@ -326,7 +326,9 @@ def downloadBAMFile(bamFile, config):
 def downloadFileFromAmazon(srcFile, destDirectory, config):
     ''' Download file from S3 '''
     if isFileInAmazon(srcFile, config) is False:
-        logger.error("%s is not found.", srcFile)
+        # If we are downloading the BAM file, fail with an error message
+        if srcFile.endswith(".bam"):
+            logger.error("%s is not found.", srcFile)
         return None
 
     # Make sure we can write to destDirectory
