@@ -4,11 +4,15 @@
 
 # cohort-matcher #
 
-A simple tool for determining whether two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is built on BAM-matcher.
+A simple tool for determining whether two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled implementation of BAM-matcher.
 
 BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exome-sequencing (WES) and RNA-sequencing (RNA-seq) human data, but can also be customised to compare panel data or non-human data.
 
+# How to run #
+
 To compare two cohorts, run:
+
+Launch an ec2 instance, then execute the following (adjust parameters as needed:
 ```
 /ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/cohort_matcher.py \
         --set1 cohort1.txt --set2 cohort2.txt \
@@ -31,7 +35,7 @@ meltedResults.txt
 
 # Docker #
 
-Cohort matcher is available in Docker via AWS Batch.   Use the following arguments to run the AWS Batch cohort-matcher job: 
+Cohort matcher is available in Docker via AWS Batch. Use the following arguments to run the AWS Batch cohort-matcher job: 
 
 --set1_s3_path
 --set2_s3_path
