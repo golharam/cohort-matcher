@@ -33,32 +33,6 @@ cohort-matcher-results.pdf
 topmatches.txt
 meltedResults.txt
 
-# Docker #
-
-Cohort matcher is available in Docker via AWS Batch. Example to run:
-
-Assuming Project ID P-1234, put the bamSheet(s) in s3://bmsrd-ngs-results/P-1234/cohort-matcher/, where
-bamSheet is a 2-column tab-delimited text file.  The first column is the sample name, and the second column is the full
-s3 path to the sample's bamfile.  Eg, s3://bmsrd-ngs-results/P-1234/cohort-matcher/P-1234.WESNormal_bamSheet.txt and 
-s3://bmsrd-ngs-results/P-1234/cohort-matcher/P-1234.RNASeq_bamSheet.txt
-
-Then run:
-
-aws batch submit-job \
-        --job-name P-1234_cohort_matcher \
-        --job-queue ngs-job-queue \
-        --job-definition cohort-matcher \
-        --container-overrides '{
-                "command": [
-                        "--set1_s3_path", "s3://bmsrd-ngs-results/P-1234/cohort-matcher/P-1234.WESNormal_bamSheet.txt",
-                        "--set2_s3_path", "s3://bmsrd-ngs-results/P-1234/cohort-matcher/P-1234.RNASeq_bamSheet.txt",
-                        "--set1_reference", "hg19",
-                        "--set2_reference", "GRCh37",
-                        "--s3_output_folderpath", "s3://bmsrd-ngs-results/P-1234/cohort-matcher"
-                ]
-        }'
-
-
 ## Variant Callers ##
 
 (Require at least one)
