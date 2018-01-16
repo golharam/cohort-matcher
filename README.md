@@ -47,6 +47,7 @@ Note: Cohort-matcher only supports Freebayes at this time.
 
 ```
 git clone https://github.com/golharam/cohort-matcher
+pip install -r cohort-matcher/requirements.txt
 ```
 
 The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
