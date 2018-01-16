@@ -475,7 +475,7 @@ def genotypeSample(sample, bamFile, reference, vcf, intervalsFile, config):
             out, err = p.communicate()
             p.wait()
             if p.returncode != 0:
-                logger.error("Error executing %s.\nStdout: %s\nStderr: %s,", ' '.join(cmd), out,
+                logger.error("Error executing %s.\nStdout: %s\nStderr: %s", ' '.join(cmd), out,
                              err)
                 os.remove(outputVcf)
                 if deleteBam is True:
