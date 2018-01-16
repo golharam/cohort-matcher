@@ -182,11 +182,11 @@ def main():
         os.remove(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'))
 
     # Run cohort-matcher
-    logger.info('Running cohort-matcher')
     if args.max_jobs is None:
         max_jobs = multiprocessing.cpu_count()
     else:
         max_jobs = args.max_jobs
+    logger.info('Running cohort-matcher using %d threads.', max_jobs)
     output_folder_path = run_cohort_matcher(args.log_level, set1_bamsheet, set2_bamsheet,
                                             args.set1_reference, args.set2_reference,
                                             working_dir, args.output_prefix, max_jobs)
