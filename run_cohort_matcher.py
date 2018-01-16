@@ -178,7 +178,7 @@ def main():
         logger.info("Downloading GRCh37 reference bundle")
         download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', refdir)
         logger.info("Uncompressing GRCh37 reference bundle")
-        uncompress(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2') refdir)
+        uncompress(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'), refdir)
         os.remove(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'))
 
     # Run cohort-matcher
