@@ -1,4 +1,5 @@
 FROM centos:7
+MAINTAINER Ryan Golhar <ryan.golhar@bms.com>
 
 # Metadata
 LABEL container.base.image="centos:7"
@@ -50,14 +51,16 @@ RUN rm -rf /samtools-1.6
 # cohort-matcher
 VOLUME /scratch
 
+# Pre-reqs
 RUN pip install numpy && \
     pip install boto3 && \
     pip install awscli
 RUN git clone https://github.com/golharam/cohort-matcher.git && \
     pip install -r cohort-matcher/requirements.txt
+# cohort-matcher
 RUN cd cohort-matcher && \
     git pull && \
-    git checkout 13e4dd6
+    git checkout cohort-matcher
 
 # Application entry point
 ENTRYPOINT ["python", "/cohort-matcher/run_cohort_matcher.py"]

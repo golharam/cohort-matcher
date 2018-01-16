@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from common_utils.s3_utils import download_file, upload_file, download_folder, upload_folder
 from common_utils.job_utils import generate_working_dir, delete_working_dir, uncompress
 
-__version__ = "1.0.2"
+__version__ = "1.0.3-alpha"
 logger = logging.getLogger(__name__)
 
 def download_reference(s3_path, working_dir):
@@ -178,15 +178,15 @@ def main():
         logger.info("Downloading GRCh37 reference bundle")
         download_file('s3://bmsrd-ngs-repo/reference/GRCh37-cohort-matcher.tar.bz2', refdir)
         logger.info("Uncompressing GRCh37 reference bundle")
-        uncompress(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2', refdir))
+        uncompress(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'), refdir)
         os.remove(os.path.join(refdir, 'GRCh37-cohort-matcher.tar.bz2'))
 
     # Run cohort-matcher
-    logger.info('Running cohort-matcher')
     if args.max_jobs is None:
         max_jobs = multiprocessing.cpu_count()
     else:
         max_jobs = args.max_jobs
+    logger.info('Running cohort-matcher using %d threads.', max_jobs)
     output_folder_path = run_cohort_matcher(args.log_level, set1_bamsheet, set2_bamsheet,
                                             args.set1_reference, args.set2_reference,
                                             working_dir, args.output_prefix, max_jobs)
