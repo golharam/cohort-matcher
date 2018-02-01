@@ -33,16 +33,6 @@ cohort-matcher-results.pdf
 topmatches.txt
 meltedResults.txt
 
-# Docker #
-
-Cohort matcher is available in Docker via AWS Batch. Use the following arguments to run the AWS Batch cohort-matcher job: 
-
---set1_s3_path
---set2_s3_path
---set1_reference [hg19/GRCh37]
---set2_reference [hg19/GRCh37]
---s3_output_folder_path
-
 ## Variant Callers ##
 
 (Require at least one)
@@ -57,6 +47,7 @@ Note: Cohort-matcher only supports Freebayes at this time.
 
 ```
 git clone https://github.com/golharam/cohort-matcher
+pip install -r cohort-matcher/requirements.txt
 ```
 
 The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
