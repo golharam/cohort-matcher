@@ -107,7 +107,7 @@ def checkReference(sample, localBamFile, reference, vcfFile):
     # The bam should be a subset of the reference chromosomes.
     if set(bam_chroms).issubset(set(ref_chroms)) is False:
         bamREF_dff = set(bam_chroms).difference(set(ref_chroms))
-        logger.error("Sample BAM %s contains chromosomes not in reference %s.  The bam should be a subset of the reference chromosomes.  The chromsomes in the BAM file missing in the reference are: %s",
+        logger.error("Sample BAM %s contains chromosomes not in reference %s.  The bam should be a subset of the reference chromosomes.  The chromsomes in the BAM file missing in the reference are: %s.  This sample will not be analyzed.",
                      sample, reference, bamREF_dff)
         return False
 
