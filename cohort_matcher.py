@@ -886,6 +886,10 @@ def VCFtoTSV(invcf, outtsv, caller):
 
 def writeSampleComparisonReport(sample1, sample2, config, results):
     ''' Write sample comparison report '''
+    REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
+    if os.path.exists(REPORT_PATH) is True:
+        return
+
     # unpack values used in this function
     total_compared = results['total_compared']
     ct_common = results['ct_common']
@@ -946,10 +950,6 @@ CONCLUSION:
             (sample1, sample2, config.dp_threshold, frac_common, ct_common, comm_hom_ct,
              comm_het_ct, ct_diff, diff_het_ct, diff_het_hom_ct, diff_2sub1_ct,
              diff_hom_het_ct, diff_hom_ct, diff_1sub2_ct, short_judgement)
-
-    REPORT_PATH = "%s/%s-%s" % (config.output_dir, sample1, sample2)
-    if os.path.exists(REPORT_PATH) is False:
-        return
 
     with open(REPORT_PATH, "w") as fout:
         if config.short_output:
