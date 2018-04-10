@@ -248,6 +248,11 @@ def compareSamples(sampleSet1, sampleSet2, config):
         logger.error("Not all samples genotyped.")
         return False
 
+    meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
+    logger.info("Writing melted results to %s", meltedResultsFile)
+    fout = open(meltedResultsFile, "w")
+    fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
+
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
             logger.info("Comparing %s - %s", sample1["name"], sample2["name"])
@@ -278,6 +283,16 @@ def compareSamples(sampleSet1, sampleSet2, config):
             total_compared_matrix[sample1["name"]][sample2["name"]] = results['total_compared']
             short_judgement[sample1["name"]][sample2["name"]] = results['short_judgement']
             judgement[sample1["name"]][sample2["name"]] = results['judgement']
+
+            n1 = '%d' % len(var_list)
+            n2 = '%d' % len(var_list2)
+            fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
+            tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
+            j = judgement[sample1["name"]][sample2["name"]]
+            fout.write(sample1["name"] + "\t" + sample2["name"] + "\t" + 
+                       n1 + "\t" + n2 + "\t" + 
+                       tc + "\t" + fm + "\t" + j + "\n")
+
     writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
                           total_compared_matrix, judgement)
     return True
@@ -981,17 +996,6 @@ def writeSimilarityMatrix(config, sampleSet1, sampleSet2, frac_common_matrix,
                     f_tot_compared.write("\t" + s)
                 fout.write("\n")
                 f_tot_compared.write("\n")
-
-    meltedResultsFile = "{}.meltedResults.txt".format(config.output_prefix)
-    logger.info("Writing melted results to %s", meltedResultsFile)
-    with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tFraction_Match\tSNPs_Compared\tJudgement\n")
-        for sample1 in sampleSet1:
-            for sample2 in sampleSet2:
-                fm = '%.4f' % frac_common_matrix[sample1["name"]][sample2["name"]]
-                tc = '%d' % total_compared_matrix[sample1["name"]][sample2["name"]]
-                j = judgement[sample1["name"]][sample2["name"]]
-                fout.write(sample1["name"]+"\t"+sample2["name"]+"\t"+fm+"\t"+tc+"\t"+j+"\n")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
