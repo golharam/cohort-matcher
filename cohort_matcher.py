@@ -771,6 +771,7 @@ def readSamples(sampleSheetFile):
         logger.error("%s does not exist", sampleSheetFile)
         return False
     logger.info("Reading %s", sampleSheetFile)
+    sampleNames = []
     samples = []
     with open(sampleSheetFile, 'r') as f:
         for line in f:
@@ -784,9 +785,13 @@ def readSamples(sampleSheetFile):
                              len(fields))
                 return False
 
+            sampleNames.append(fields[0])
             sample = {"name": fields[0],
                       "bam": fields[1]}
             samples.append(sample)
+    if len(sampleNames) != len(set(sampleNames)):
+        logger.error("Duplicate sampleids found in %s", sampleSheetFile)
+        return False
     logger.info("Read %d samples.", len(samples))
     return samples
 
