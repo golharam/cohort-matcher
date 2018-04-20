@@ -629,9 +629,7 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += """BAM%s genotype appears to be a subset of BAM%s. Possibly
-                BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_,
-                                                                      sub_, over_)
+                judgement += """ BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
