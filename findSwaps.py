@@ -64,7 +64,7 @@ def main(argv):
                     sample_matches = sample_matches.sort_values(by="Fraction_Match", ascending=False)
                     topMatch = sample_matches.iloc[0][otherSample]
                     if topMatch not in samples:
-                        logger.warn("Sample %s does not match to samples from same patient.  It matches to %s", sample, topMatch)
+                        logger.warn("Sample %s does not match to samples from same patient (%s).  It matches to %s", sample, patient, topMatch)
     logger.warn("List of non-matched samples: %s", badSamples)
     
 def parseArguments(argv):
