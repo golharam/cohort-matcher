@@ -48,6 +48,7 @@ def matchSamplesToPatients(cm, patients):
     # For each sample, make sure the top match is another sample from the same patient
     missingSamples = []
     badSamples = []
+    mismatchedSamples = 0
     for patient in patients:
         logger.info("%s", patient)
         samples = patients[patient]
@@ -71,20 +72,23 @@ def matchSamplesToPatients(cm, patients):
                         badSamples.append(sample)
                     else:
                         if topMatch not in samples:
-                            logger.warn("Sample %s does not match to samples from same patient (%s).  It matches to %s",
-                                        sample, patient, topMatch)
-                            logger.warn("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match")
+                            print("Sample %s does not match to samples from same patient (%s).  It matches to %s" %
+                                  (sample, patient, topMatch))
+                            print("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match")
                             for i in range(0, 5):
-                                logger.warn("%s\t%s\t%d\t%d\t%d\t%0.4f", sample_matches.iloc[i]['Sample1'],
-                                                                         sample_matches.iloc[i]['Sample2'],
-                                                                         sample_matches.iloc[i]['n_S1'],
-                                                                         sample_matches.iloc[i]['n_S2'],
-                                                                         sample_matches.iloc[i]['SNPs_Compared'],
-                                                                         sample_matches.iloc[i]['Fraction_Match'])
+                                print("%s\t%s\t%d\t%d\t%d\t%0.4f\n" % (sample_matches.iloc[i]['Sample1'],
+                                                                       sample_matches.iloc[i]['Sample2'],
+                                                                       sample_matches.iloc[i]['n_S1'],
+                                                                       sample_matches.iloc[i]['n_S2'],
+                                                                       sample_matches.iloc[i]['SNPs_Compared'],
+                                                                       sample_matches.iloc[i]['Fraction_Match']))
+                                mismatchedSamples += 1
     
-    logger.warn("The following samples were not found in cohort-matcher meltedResults. " \
-                "They could have been filtered out due to low coverage: %s", missingSamples)
-    logger.warn("The following samples did not have a good match (Fraction_Match >= 0.7) to any samples: %s", badSamples)
+    print("Mismatched Samples: %d" % mismatchedSamples)
+    print("There were %d samples not found in cohort-matcher meltedResults. " \
+          "They could have been filtered out due to low coverage: %s" % (len(missingSamples), missingSamples))
+    print("There were %d samples that did not have a good match (Fraction_Match >= 0.7) to any samples: %s" %
+          (len(badSamples), badSamples))
 
 def parseArguments(argv):
     ''' Parse Arguments '''
