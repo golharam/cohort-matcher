@@ -40,8 +40,13 @@ def main(argv):
     cm = cm[cm.SNPs_Compared >= args.threshold]
     logger.info("%d lines after filtering", len(cm))
     patients = readPatientToSample(args.patientToSample)
+
+    matchSamplesToPatients(cm, patients)
+    
+def matchSamplesToPatients(cm, patients):
     # Scan each patient
     # For each sample, make sure the top match is another sample from the same patient
+    missingSamples = []
     badSamples = []
     for patient in patients:
         logger.info("%s", patient)
@@ -56,17 +61,31 @@ def main(argv):
                     sample_matches = cm[cm.Sample2==sample]
                     otherSample = 'Sample1'
                     if len(sample_matches) == 0:
-                        logger.warn("Unable to find sample %s in cohort-matcher meltedResults. " \
-                                     "It could have been filtered out due to low coverage.", sample)
-                        badSamples.append(sample)
-                        
+                        missingSamples.append(sample)
+
                 if len(sample_matches) > 0:
                     sample_matches = sample_matches.sort_values(by="Fraction_Match", ascending=False)
                     topMatch = sample_matches.iloc[0][otherSample]
-                    if topMatch not in samples:
-                        logger.warn("Sample %s does not match to samples from same patient (%s).  It matches to %s", sample, patient, topMatch)
-    logger.warn("List of non-matched samples: %s", badSamples)
+                    fractionMatch = sample_matches.iloc[0]['Fraction_Match']
+                    if fractionMatch < 0.7:
+                        badSamples.append(sample)
+                    else:
+                        if topMatch not in samples:
+                            logger.warn("Sample %s does not match to samples from same patient (%s).  It matches to %s",
+                                        sample, patient, topMatch)
+                            logger.warn("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match")
+                            for i in range(0, 5):
+                                logger.warn("%s\t%s\t%d\t%d\t%d\t%0.4f", sample_matches.iloc[i]['Sample1'],
+                                                                         sample_matches.iloc[i]['Sample2'],
+                                                                         sample_matches.iloc[i]['n_S1'],
+                                                                         sample_matches.iloc[i]['n_S2'],
+                                                                         sample_matches.iloc[i]['SNPs_Compared'],
+                                                                         sample_matches.iloc[i]['Fraction_Match'])
     
+    logger.warn("The following samples were not found in cohort-matcher meltedResults. " \
+                "They could have been filtered out due to low coverage: %s", missingSamples)
+    logger.warn("The following samples did not have a good match (Fraction_Match >= 0.7) to any samples: %s", badSamples)
+
 def parseArguments(argv):
     ''' Parse Arguments '''
     parser = argparse.ArgumentParser(description="Find swaps in cohort-matcher results")
