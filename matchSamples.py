@@ -76,14 +76,15 @@ def matchSamplesToPatients(cm, patients):
                                   (sample, patient, topMatch))
                             print("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match")
                             for i in range(0, 5):
-                                print("%s\t%s\t%d\t%d\t%d\t%0.4f\n" % (sample_matches.iloc[i]['Sample1'],
-                                                                       sample_matches.iloc[i]['Sample2'],
-                                                                       sample_matches.iloc[i]['n_S1'],
-                                                                       sample_matches.iloc[i]['n_S2'],
-                                                                       sample_matches.iloc[i]['SNPs_Compared'],
-                                                                       sample_matches.iloc[i]['Fraction_Match']))
+                                print("%s\t%s\t%d\t%d\t%d\t%0.4f" % (sample_matches.iloc[i]['Sample1'],
+                                                                     sample_matches.iloc[i]['Sample2'],
+                                                                     sample_matches.iloc[i]['n_S1'],
+                                                                     sample_matches.iloc[i]['n_S2'],
+                                                                     sample_matches.iloc[i]['SNPs_Compared'],
+                                                                     sample_matches.iloc[i]['Fraction_Match']))
                                 mismatchedSamples += 1
-    
+                            print("")
+
     print("Mismatched Samples: %d" % mismatchedSamples)
     print("There were %d samples not found in cohort-matcher meltedResults. " \
           "They could have been filtered out due to low coverage: %s" % (len(missingSamples), missingSamples))
