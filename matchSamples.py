@@ -74,6 +74,7 @@ def matchSamplesToPatients(cm, patients):
                         if topMatch not in samples:
                             print("Sample %s does not match to samples from same patient (%s).  It matches to %s" %
                                   (sample, patient, topMatch))
+                            mismatchedSamples += 1
                             print("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match")
                             for i in range(0, 5):
                                 print("%s\t%s\t%d\t%d\t%d\t%0.4f" % (sample_matches.iloc[i]['Sample1'],
@@ -82,7 +83,6 @@ def matchSamplesToPatients(cm, patients):
                                                                      sample_matches.iloc[i]['n_S2'],
                                                                      sample_matches.iloc[i]['SNPs_Compared'],
                                                                      sample_matches.iloc[i]['Fraction_Match']))
-                                mismatchedSamples += 1
                             print("")
 
     print("Mismatched Samples: %d" % mismatchedSamples)
