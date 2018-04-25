@@ -34,15 +34,18 @@ def main(argv):
     logging.basicConfig(level=args.log_level)
     logger.info("findSwaps v%s" % __version__)
     logger.info(args)
-    # Read in files
+
+    # Read in meltedResults
     cm = read_csv(args.meltedResults, sep="\t")
     logger.info("Read %d lines", len(cm))
     cm = cm[cm.SNPs_Compared >= args.threshold]
+    # Read in Patient to Sample mapping
     logger.info("%d lines after filtering", len(cm))
     patients = readPatientToSample(args.patientToSample)
 
+    # Match samples to patients
     matchSamplesToPatients(cm, patients)
-    
+
 def matchSamplesToPatients(cm, patients):
     # Scan each patient
     # For each sample, make sure the top match is another sample from the same patient
