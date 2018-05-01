@@ -253,9 +253,12 @@ def compareSamples(sampleSet1, sampleSet2, config):
     fout = open(meltedResultsFile, "w")
     fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
 
+    i = 0
+    j = len(sampleSet1) * len(sampleSet2)
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
-            logger.info("Comparing %s - %s", sample1["name"], sample2["name"])
+            i += 1
+            logger.info("[%d/%d] Comparing %s - %s", i, j, sample1["name"], sample2["name"])
             # Get a list of variants that pass in sample 1
             tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
             var_list = get_tsv_variants(tsv1, config.dp_threshold)
@@ -629,9 +632,7 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += """BAM%s genotype appears to be a subset of BAM%s. Possibly
-                BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_,
-                                                                      sub_, over_)
+                judgement += """ BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
@@ -773,6 +774,7 @@ def readSamples(sampleSheetFile):
         logger.error("%s does not exist", sampleSheetFile)
         return False
     logger.info("Reading %s", sampleSheetFile)
+    sampleNames = []
     samples = []
     with open(sampleSheetFile, 'r') as f:
         for line in f:
@@ -786,9 +788,13 @@ def readSamples(sampleSheetFile):
                              len(fields))
                 return False
 
+            sampleNames.append(fields[0])
             sample = {"name": fields[0],
                       "bam": fields[1]}
             samples.append(sample)
+    if len(sampleNames) != len(set(sampleNames)):
+        logger.error("Duplicate sampleids found in %s", sampleSheetFile)
+        return False
     logger.info("Read %d samples.", len(samples))
     return samples
 

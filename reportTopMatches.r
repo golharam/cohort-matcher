@@ -85,9 +85,9 @@ plotSampleSimilarity <- function(x, ...) {
   if( !is.null(title) ){
     title(main=title)
   }
-  axis(BELOW<-1, at=1:length(xLabels), labels=xLabels, cex.axis=0.7)
-  axis(LEFT <-2, at=1:length(yLabels), labels=yLabels, las= HORIZONTAL<-1,
-       cex.axis=0.7)
+  #axis(BELOW<-1, at=1:length(xLabels), labels=xLabels, cex.axis=0.7)
+  #axis(LEFT <-2, at=1:length(yLabels), labels=yLabels, las= HORIZONTAL<-1,
+  #     cex.axis=0.7)
   
   # Color Scale
   par(mar = c(3,2.5,2.5,2))
@@ -117,6 +117,8 @@ plotNumSNPsCompared <- function(x, ...) {
                 # Row/Column Labeling
                 cexRow=0.5,
                 cexCol=0.5,
+                labRow=NA,
+                labCol=NA,
 
                 # color key + density info
                 density.info='histogram',
