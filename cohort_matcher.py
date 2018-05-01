@@ -253,9 +253,12 @@ def compareSamples(sampleSet1, sampleSet2, config):
     fout = open(meltedResultsFile, "w")
     fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
 
+    i = 0
+    j = len(sampleSet1) * len(sampleSet2)
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
-            logger.info("[%d/%d] Comparing %s - %s", len(sampleSet1), len(sampleSet2), sample1["name"], sample2["name"])
+            i += 1
+            logger.info("[%d/%d] Comparing %s - %s", i, j, sample1["name"], sample2["name"])
             # Get a list of variants that pass in sample 1
             tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
             var_list = get_tsv_variants(tsv1, config.dp_threshold)
