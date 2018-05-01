@@ -255,7 +255,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
 
     for sample1 in sampleSet1:
         for sample2 in sampleSet2:
-            logger.info("Comparing %s - %s", sample1["name"], sample2["name"])
+            logger.info("[%d/%d] Comparing %s - %s", len(sampleSet1), len(sampleSet2), sample1["name"], sample2["name"])
             # Get a list of variants that pass in sample 1
             tsv1 = os.path.join(config.cache_dir, sample1["name"] + ".tsv")
             var_list = get_tsv_variants(tsv1, config.dp_threshold)
