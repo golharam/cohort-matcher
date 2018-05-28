@@ -218,15 +218,18 @@ def main(argv):
     else:
         bamsheet = args.bamsheet
     samples = readSamples(bamsheet)
+    i = 0
     for sample in samples:
+        i = i + 1
         if sample['name'] == sampleName:
             continue
-        logger.info("Comparing %s - %s", sampleName, sample['name'])
+        sample2 = sample['name']
+        logger.info("[%d/%d] Comparing %s - %s", i, len(samples), sampleName, sample2)
         
-        s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_dir, sample['name'])
-        vcfFile2 = "%s/%s.vcf" % (working_dir, sample['name'])
+        s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_dir, sample2)
+        vcfFile2 = "%s/%s.vcf" % (working_dir, sample2)
         downloadFile(s3_vcfFile, vcfFile2)
-        tsvFile2 = "%s/%s.tsv" % (working_dir, sampleName)
+        tsvFile2 = "%s/%s.tsv" % (working_dir, sample2)
         VCFtoTSV(vcfFile2, tsvFile2)
         var_list2 = get_tsv_variants(tsvFile2, args.dp_threshold)
         os.remove(vcfFile2)
@@ -243,8 +246,8 @@ def main(argv):
         fm = '%.4f' % results['frac_common']
         tc = '%d' % results['total_compared']
         j = results['short_judgement']
-        fout.write(sampleName + "\t" + sample["name"] + "\t" + 
-                   n1 + "\t" + n2 + "\t" + 
+        fout.write(sampleName + "\t" + sample2 + "\t" +
+                   n1 + "\t" + n2 + "\t" +
                    tc + "\t" + fm + "\t" + j + "\n")
     fout.close()
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_dir, os.path.basename(meltedResultsFile)))
