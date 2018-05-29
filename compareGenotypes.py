@@ -9,7 +9,7 @@ import os
 import vcf
 import sys
 
-from common import downloadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
+from common import downloadFile, uploadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
 __version__ = "0.1-beta"
