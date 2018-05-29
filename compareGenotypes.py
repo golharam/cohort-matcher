@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Script to  compare genotypes of samples
+Script to compare genotypes of samples
 '''
 import argparse
 from fisher import pvalue
@@ -12,7 +12,7 @@ import sys
 from common import downloadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
-__version__ = "0.1-alpha"
+__version__ = "0.1-beta"
 
 logger = logging.getLogger(__appname__)
 
@@ -199,7 +199,7 @@ def main(argv):
     logger.info("Working in %s", working_dir)
 
     sampleName = args.sample
-    s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_dir, sampleName)
+    s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sampleName)
     vcfFile = "%s/%s.vcf" % (working_dir, sampleName)
     downloadFile(s3_vcfFile, vcfFile)
     tsvFile = "%s/%s.tsv" % (working_dir, sampleName)
@@ -212,21 +212,15 @@ def main(argv):
     fout = open(meltedResultsFile, "w")
     fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
 
-    if args.bamsheet.startswith('s3://'):
-        bamsheet = "%s/bamsheet.txt" % working_dir
-        downloadFile(args.bamsheet, bamsheet)
-    else:
-        bamsheet = args.bamsheet
-    samples = readSamples(bamsheet)
+    files = listFiles(args.s3_cache_folder, suffix=".vcf")
     i = 0
-    for sample in samples:
+    for s3_vcfFile in files:
         i = i + 1
-        if sample['name'] == sampleName:
+        sample2 = os.path.basename(s3_vcfFile).replace(".vcf", "")
+        if sample2 == sampleName:
             continue
-        sample2 = sample['name']
-        logger.info("[%d/%d] Comparing %s - %s", i, len(samples), sampleName, sample2)
+        logger.info("[%d/%d] Comparing %s - %s", i, len(files), sampleName, sample2)
         
-        s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_dir, sample2)
         vcfFile2 = "%s/%s.vcf" % (working_dir, sample2)
         downloadFile(s3_vcfFile, vcfFile2)
         tsvFile2 = "%s/%s.tsv" % (working_dir, sample2)
@@ -262,10 +256,10 @@ def parseArguments(argv):
     parser.add_argument('--log-level', help="Prints warnings to console by default",
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
-    parser.add_argument('-b', '--bamsheet', required=True, help="Bamsheet of all samples")
     parser.add_argument('-s', '--sample', required=True, help="Sample of interest")
-    parser.add_argument("--s3-cache-dir", "-CD", required=True, 
+    parser.add_argument("--s3_cache_folder", "-CD", required=True, 
                         help="Specify S3 path for cached VCF/TSV files")
+
     parser.add_argument('--working_dir', type=str, default='/scratch')
 
     parser.add_argument("-t", "--dp_threshold", default=15, help="Depth of Coverage Threshold")
@@ -294,6 +288,7 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     '''
     Convert a VCF to TSV
     '''
+    logger.debug("%s -> %s", invcf, outtsv)
     fout = open(outtsv, "w")
     vcf_in = vcf.Reader(open(invcf, "r"))
     var_ct = 0
@@ -302,7 +297,9 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     elif caller == "freebayes":
         fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AO", "GT"]
     fout.write("%s\n" % "\t".join(fields_to_extract))
-    for var in vcf_in:
+    try:
+      for var in vcf_in:
+        logger.debug("%s:%s", var.CHROM, var.POS)
         chrom_ = var.CHROM.replace("chr", "")
         pos_ = str(var.POS)
         ref_ = var.REF
@@ -362,7 +359,10 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
         data_bits = [chrom_, pos_, ref_, alt_str, qual_, dp_, ad_str, gt_]
         fout.write("%s\n" % "\t".join(data_bits))
         var_ct += 1
-    fout.close()
+      fout.close()
+    except:
+      os.remove(outtsv)
+      logger.error("Could not convert %s -> %s", invcf, outtsv)
     return var_ct
 
 if __name__ == '__main__':
