@@ -274,7 +274,7 @@ def compareSamples(sampleSet1, sampleSet2, config):
                                        alternate_chroms, def_to_alt)
             logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
                         results['short_judgement'])
-            writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
+            #writeSampleComparisonReport(sample1["name"], sample2["name"], config, results)
 
             # save to grand matrix
             if sample1["name"] not in frac_common_matrix:
@@ -788,10 +788,13 @@ def readSamples(sampleSheetFile):
                              len(fields))
                 return False
 
-            sampleNames.append(fields[0])
-            sample = {"name": fields[0],
-                      "bam": fields[1]}
-            samples.append(sample)
+            if fields[0] in sampleNames:
+                logger.warn("Encountered duplicate sample, %s. Skipping...", fields[0])
+            else:
+                sampleNames.append(fields[0])
+                sample = {"name": fields[0],
+                          "bam": fields[1]}
+                samples.append(sample)
     if len(sampleNames) != len(set(sampleNames)):
         logger.error("Duplicate sampleids found in %s", sampleSheetFile)
         return False
