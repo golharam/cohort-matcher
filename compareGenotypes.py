@@ -12,7 +12,7 @@ import sys
 from common import downloadFile, uploadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
-__version__ = "0.1-2018-05-30.beta"
+__version__ = "0.1"
 
 logger = logging.getLogger(__appname__)
 
@@ -244,9 +244,11 @@ def main(argv):
                    n1 + "\t" + n2 + "\t" +
                    tc + "\t" + fm + "\t" + j + "\n")
     fout.close()
+    logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
 
     logger.info('Cleaning up working dir')
+    os.remove(meltedResultsFile)
     delete_working_dir(working_dir)
     logger.info('Completed')
 
