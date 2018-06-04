@@ -4,27 +4,56 @@
 
 # cohort-matcher #
 
-A simple tool for determining whether two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled implementation of BAM-matcher.
+A workflow for comparing two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled implementation of BAM-matcher.
 
 BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exome-sequencing (WES) and RNA-sequencing (RNA-seq) human data, but can also be customised to compare panel data or non-human data.
 
+# Algorithm #
+
+The basic workflow consists of:
+1. Genotype all the samples to be compared.
+2. Compare the genotypes of each sample against the genotypes of all the other samples.
+3. Merge the results of the sample comparisons
+4. Generate plots based on results and known patient-to-sample assocation.
+
+In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
+1.  Genotype each sample independently of each other
+2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+
+# Genome Reference #
+
+The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg39 / GRCh38). 
+Samples must be mapped against either: 
+
+1) hg19 or GRCh37
+
+OR
+
+2) hg38 or GRCh38.
+
+Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
+
 # How to run #
 
-To compare two cohorts, run:
+1.  Make input bamsheets
 
-Launch an ec2 instance, then execute the following (adjust parameters as needed:
+Construct a single 2 column tab-delimited file consisting of sampleName and S3 path to the sample's bamfile, for each set of samples mapped to a specific reference. For instance, if comparing a set of samples all mapped to GRCh38, create 1 TSV file.  If compare two sets of samples mapped to two different references (hg39 and GRCh38), create two TSV files, one for each set of samples.
+
+set1.txt:
+sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-ensembl91.bam
+
+set2.txt:
+sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
+
+2.  Call run-cohort-matcher.py
+
 ```
-/ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/cohort_matcher.py \
-        --set1 cohort1.txt --set2 cohort2.txt \
-        --cache-dir `pwd`/cache --scratch-dir /scratch \
-        --caller freebayes \
-        --vcf /ngs/apps/cohort-matcher/hg19.exome.highAF.7550.vcf \
-        --reference /ngs/reference/hg19/hg19.fa \
-        --freebayes-path /ngs/apps/freebayes/bin/freebayes \
-        --aws /usr/bin/aws \
-        --Rscript /ngs/apps/R-3.2.2/bin/Rscript \
-        --samtools /ngs/apps/samtools-0.1.19/samtools \
-        --output-dir output
+/ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/run_cohort_matcher.py \
+        --set1 cohort1.txt --set2 cohort2.txt
+        --s3_cache_folder s3://bmsrd-ngs-results/P-12345678-1234/cohort-matcher/cache
+        --reference [hg19, GRCh37, hg38, GRCh38]
+        --reference2 [hg19, GRCh37, hg38, GRCh38] (if different from set1)
+        --s3_output_folder s3://bmsrd-ngs-results/P-12345678-1234/cohort-matcher
 ```
 
 which will output a series of files indicating sample similarity include:
