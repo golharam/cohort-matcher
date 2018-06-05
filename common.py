@@ -53,6 +53,8 @@ def readSamples(sampleSheetFile):
     '''
     readSamples reads in a sampleSheetFile consisting of two columns:
     name and bamfile
+    :param sampleSheetFile: tab-delimited file of samplename and s3 bamfile path
+    :return: list of {name, bam} dictionaries
     '''
     if os.path.isfile(sampleSheetFile) is False:
         logger.error("%s does not exist", sampleSheetFile)
