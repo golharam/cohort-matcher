@@ -10,7 +10,7 @@ import sys
 from common import find_bucket_key, listFiles, readSamples
 
 __appname__ = 'genotypeSamples'
-__version__ = "0.1-alpha"
+__version__ = "0.1"
 
 logger = logging.getLogger(__appname__)
 
@@ -48,6 +48,8 @@ def parseArguments(argv):
     parser.add_argument('--log-level', help="Prints warnings to console by default",
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
+    parser.add_argument('-d', '--dryRun', default=False, action="store_true",
+                        help="Simulate job submission")
     parser.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
 
     parser.add_argument('-r', '--reference_s3_path', required=True,
