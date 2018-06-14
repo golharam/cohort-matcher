@@ -1,11 +1,14 @@
+#!/usr/bin/env python
 import argparse
 import logging
 import sys
 
 import vcf
 
-logger = logging.getLogger("VCFtoIntervals")
+__appname__ = "VCFtoIntervals"
 __version__ = "0.1"
+
+logger = logging.getLogger(__appname__)
 
 '''
 This script really does nothing more than convert a VCF to a BED file appropriate for the
