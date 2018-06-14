@@ -29,18 +29,21 @@ def main(argv):
         sampleName = sample['name']
         vcfFile = "%s/%s.vcf" % (args.outputfolder_s3_path, sampleName)
         if vcfFile not in vcfFiles:
-            logger.info("Genotype %s", sampleName)
-            response = batch.submit_job(jobName='freebayes-%s' % sampleName,
-                                        jobQueue='ngs-job-queue',
-                                        jobDefinition='freebayes:1',
-                                        containerOverrides={
-                                            'command': ["--sample_name", sampleName,
-                                                        "--bamfile_s3_path", sample['bam'],
-                                                        "--targets_s3_path", args.targets_s3_path,
-                                                        "--reference_s3_path", args.reference_s3_path,
-                                                        "--s3_output_folder_path", args.outputfolder_s3_path]
-                                        })
-            logger.debug(response)
+			if args.dryRun:
+				logger.info("Would genotype %s", sampleName)
+			else:
+                logger.info("Genotype %s", sampleName)
+                response = batch.submit_job(jobName='freebayes-%s' % sampleName,
+                                            jobQueue='ngs-spot-job-queue',
+                                            jobDefinition='freebayes:1',
+                                            containerOverrides={
+                                                'command': ["--sample_name", sampleName,
+                                                            "--bamfile_s3_path", sample['bam'],
+                                                            "--targets_s3_path", args.targets_s3_path,
+                                                            "--reference_s3_path", args.reference_s3_path,
+                                                            "--s3_output_folder_path", args.outputfolder_s3_path]
+                                            })
+                logger.debug(response)
  
 def parseArguments(argv):
     ''' Parse Arguments '''
