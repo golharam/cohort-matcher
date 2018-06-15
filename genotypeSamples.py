@@ -5,6 +5,7 @@ This script calls freebayes for each sample.
 import argparse
 import boto3
 import logging
+import os
 import sys
 
 from common import find_bucket_key, listFiles, readSamples
@@ -23,15 +24,19 @@ def main(argv):
 
     batch = boto3.client('batch')
 
+    if os.path.exists(args.bamsheet) is False:
+        logger.error("%s does not exist", args.bamsheet)
+        return -1
+
     samples = readSamples(args.bamsheet)
     vcfFiles = listFiles(args.outputfolder_s3_path, suffix='.vcf')
     for sample in samples:
         sampleName = sample['name']
         vcfFile = "%s/%s.vcf" % (args.outputfolder_s3_path, sampleName)
         if vcfFile not in vcfFiles:
-			if args.dryRun:
-				logger.info("Would genotype %s", sampleName)
-			else:
+            if args.dryRun:
+                logger.info("Would genotype %s", sampleName)
+            else:
                 logger.info("Genotype %s", sampleName)
                 response = batch.submit_job(jobName='freebayes-%s' % sampleName,
                                             jobQueue='ngs-spot-job-queue',
@@ -67,4 +72,4 @@ def parseArguments(argv):
     return args
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+    main(sys.argv[1:])
