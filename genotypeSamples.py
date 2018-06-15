@@ -24,11 +24,10 @@ def main(argv):
 
     batch = boto3.client('batch')
 
-    if os.path.exists(args.bamsheet) is False:
-        logger.error("%s does not exist", args.bamsheet)
+    samples = readSamples(args.bamsheet)
+    if samples is False:
         return -1
 
-    samples = readSamples(args.bamsheet)
     vcfFiles = listFiles(args.outputfolder_s3_path, suffix='.vcf')
     for sample in samples:
         sampleName = sample['name']
