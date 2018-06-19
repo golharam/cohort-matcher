@@ -41,6 +41,7 @@ def main(argv):
                                             jobQueue='ngs-spot-job-queue',
                                             jobDefinition='freebayes:1',
                                             containerOverrides={
+                                                'memory': 4096,
                                                 'command': ["--sample_name", sampleName,
                                                             "--bamfile_s3_path", sample['bam'],
                                                             "--targets_s3_path", args.targets_s3_path,
@@ -48,7 +49,9 @@ def main(argv):
                                                             "--s3_output_folder_path", args.outputfolder_s3_path]
                                             })
                 logger.debug(response)
- 
+        else:
+            logger.info("%s already genotyped.  Skipping...", sampleName)
+
 def parseArguments(argv):
     ''' Parse Arguments '''
     parser = argparse.ArgumentParser(description='Genotype a set of samples')
