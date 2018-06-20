@@ -11,8 +11,8 @@ BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exo
 # Algorithm #
 
 The basic workflow consists of:
-1. Genotype all the samples to be compared.
-2. Compare the genotypes of each sample against the genotypes of all the other samples.
+1. Genotype all the samples to be compared. (genotypeSamples.py)
+2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareGenotypes.py via compareSamples.py)
 3. Merge the results of the sample comparisons
 4. Generate plots based on results and known patient-to-sample assocation.
 

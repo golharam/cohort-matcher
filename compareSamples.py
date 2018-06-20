@@ -35,6 +35,8 @@ def main(argv):
         elif f.endswith('.meltedResults.txt'):
             meltedResultsFiles.append(f)
 
+    logger.info("Found %s samples", len(samples))
+    logger.info("Found %s melted result files", len(meltedResultsFiles))
     jobCount = 0
     for sample in samples:
         meltedResults = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample)
