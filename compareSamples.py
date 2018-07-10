@@ -43,7 +43,7 @@ def main(argv):
         if meltedResults not in meltedResultsFiles:
             logger.info("Comparing genotype of %s to other samples", sample)
             if not args.dry_run:
-                if args.job_limit and jobCount <= args.job_limit:
+                if args.job_limit is None or (args.job_limit and jobCount <= args.job_limit):
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample,
                                                 jobQueue=args.aws_batch_job_queue,
                                                 jobDefinition='cohort-matcher:2',
