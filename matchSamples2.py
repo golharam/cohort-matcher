@@ -59,14 +59,17 @@ def main(argv):
     patients = readPatientToSample(args.patientToSample)
 
     # Match samples to patients
-    matchSamplesToPatients(patients, args.meltedResults_s3path, args.threshold, args.resultsFile)
+    matchSamplesToPatients(patients, args.meltedResults_s3path, args.meltedResults_localpath,
+                           args.threshold, args.resultsFile)
 
-def matchSamplesToPatients(patients, meltedResults_s3path, threshold, resultsFile):
+def matchSamplesToPatients(patients, meltedResults_s3path, meltedResults_localpath, threshold, resultsFile):
     # Scan each patient
     # For each sample, make sure the top match is another sample from the same patient
+    totalSamples = 0
     missingSamples = []
     badSamples = []
-    mismatchedSamples = 0
+    mismatchedSamples = []
+    matchedSamples = 0
     with open(resultsFile, 'w') as output:
       output.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\n")
       for patient in patients:
@@ -74,50 +77,54 @@ def matchSamplesToPatients(patients, meltedResults_s3path, threshold, resultsFil
         logger.info("Patient: %s, Samples: %s", patient, samples)
         if len(samples) > 1:
             for sample in samples:
-                meltedResultsFile = "%s.meltedResults.txt" % sample
-                downloadFile("%s/%s.meltedResults.txt" % (meltedResults_s3path, sample), meltedResultsFile)
+                # Get the sample meltedResults
+                if meltedResults_s3path:
+                    meltedResultsFile = "%s.meltedResults.txt" % sample
+                    downloadFile("%s/%s.meltedResults.txt" % (meltedResults_s3path, sample), meltedResultsFile)
+                else:
+                    meltedResultsFile = "%s/%s.meltedResults.txt" % (meltedResults_localpath, sample)
                 if not os.path.exists(meltedResultsFile):
                     logger.error("Unable to download %s", meltedResultsFile)
+                    missingSamples.append(sample)
                     continue
                 cm = read_csv(meltedResultsFile, sep="\t")
-                os.remove(meltedResultsFile)
+                if meltedResults_s3path:
+                    os.remove(meltedResultsFile)
+                # Get the samples above threshold
                 cm = cm[cm.SNPs_Compared >= threshold]
-                sample_matches = cm[cm.Sample1==sample]
-                if len(sample_matches) > 0:
-                    otherSample = 'Sample2'
+                snpsCompared = len(cm)
+                if snpsCompared == 0:
+                    logger.warn("%s -> Not enough SNPs", sample)
+                    missingSamples.append(sample)
                 else:
-                    sample_matches = cm[cm.Sample2==sample]
-                    otherSample = 'Sample1'
-                    if len(sample_matches) == 0:
-                        missingSamples.append(sample)
-
-                if len(sample_matches) > 0:
-                    sample_matches = sample_matches.sort_values(by="Fraction_Match", ascending=False)
-                    topMatch = sample_matches.iloc[0][otherSample]
-                    fractionMatch = sample_matches.iloc[0]['Fraction_Match']
+                    totalSamples += 1
+                    samples_to_print = 1
+                    cm = cm.sort_values(by="Fraction_Match", ascending=False)
+                    topMatch = cm.iloc[0]['Sample2']
+                    fractionMatch = cm.iloc[0]['Fraction_Match']
                     if fractionMatch < 0.7:
                         badSamples.append(sample)
                     else:
                         if topMatch in samples:
+                            matchedSamples += 1
                             logger.info("%s -> %s", sample, topMatch)
                         else:
                             logger.warn("%s -> %s:%s", sample, patient, topMatch)
-                            mismatchedSamples += 1
-                            for i in range(0, 5):
-                                output.write("%s\t%s\t%d\t%d\t%d\t%0.4f\n" % (sample_matches.iloc[i]['Sample1'],
-                                                                     sample_matches.iloc[i]['Sample2'],
-                                                                     sample_matches.iloc[i]['n_S1'],
-                                                                     sample_matches.iloc[i]['n_S2'],
-                                                                     sample_matches.iloc[i]['SNPs_Compared'],
-                                                                     sample_matches.iloc[i]['Fraction_Match']))
-                else:
-                    logger.warn("%s -> No matches", sample)
+                            mismatchedSamples.append(sample)
+                            samples_to_print = 5
+                    for i in range(0, samples_to_print):
+                         output.write("%s\t%s\t%d\t%d\t%d\t%0.4f\n" % (cm.iloc[i]['Sample1'],
+                                                                       cm.iloc[i]['Sample2'],
+                                                                       cm.iloc[i]['n_S1'],
+                                                                       cm.iloc[i]['n_S2'],
+                                                                       cm.iloc[i]['SNPs_Compared'],
+                                                                       cm.iloc[i]['Fraction_Match']))
 
-    logger.info("Mismatched Samples: %d" % mismatchedSamples)
-    logger.info("There were %d samples not found in cohort-matcher meltedResults. " \
-          "They could have been filtered out due to low coverage: %s" % (len(missingSamples), missingSamples))
-    logger.info("There were %d samples that did not have a good match (Fraction_Match >= 0.7) to any samples: %s" %
-          (len(badSamples), badSamples))
+    logger.info("Samples compared: %d", totalSamples)
+    logger.info("Matched samples: %d", matchedSamples)
+    logger.info("Mismatched samples: %d", len(mismatchedSamples))
+    logger.info("Missing samples: %d (no meltedResults files or low coverage)", len(missingSamples))
+    logger.info("No matching samples: %d (Fraction_Match < 0.7)", len(badSamples))
 
 def parseArguments(argv):
     ''' Parse Arguments '''
@@ -126,7 +133,11 @@ def parseArguments(argv):
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
     parser_grp1 = parser.add_argument_group("Required")
-    parser_grp1.add_argument("--meltedResults_s3path", required=True, help="Melted results files from cohort-matcher")
+
+    parser_mr = parser.add_mutually_exclusive_group(required=True)
+    parser_mr.add_argument("--meltedResults_s3path", help="Melted results files from cohort-matcher")
+    parser_mr.add_argument("--meltedResults_localpath", help="Melted results files from cohort-matcher")
+    
     parser_grp1.add_argument("--patientToSample", required=True, help="Patient to Sample Mapping file")
     parser_grp1.add_argument("--threshold", default=15, help="Min # of SNPS compared between samples")
     parser_grp1.add_argument("--resultsFile", default="cohort-matcher_results.txt", help="Results of mismatched samples")

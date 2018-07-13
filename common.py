@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import logging
 import os
 import uuid
@@ -9,7 +10,10 @@ def downloadFile(srcFile, destFile):
     ''' Download file from S3 '''
     s3 = boto3.resource('s3')
     bucket, key = find_bucket_key(srcFile)
-    s3.meta.client.download_file(bucket, key, destFile)
+    try:
+        s3.meta.client.download_file(bucket, key, destFile)
+    except botocore.exceptions.ClientError as e:
+        logger.warn(e)
 
 def uploadFile(srcFile, destFile):
     ''' Upload a file to S3 '''
