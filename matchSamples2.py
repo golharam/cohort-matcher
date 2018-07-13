@@ -39,7 +39,7 @@ def readPatientToSample(patientToSampleFile):
                 patients[patientid].append(sampleid)
             else:
                 patients[patientid] = [sampleid]
-    logger.info("Read %d patients", len(patients))
+    logger.debug("Read %d patients", len(patients))
     return patients
 
 def main(argv):
@@ -51,20 +51,29 @@ def main(argv):
     logger.info(args)
 
     # Read in meltedResults
-    #cm = read_csv(args.meltedResults, sep="\t")
-    #logger.info("Read %d lines", len(cm))
-    #cm = cm[cm.SNPs_Compared >= args.threshold]
-    # Read in Patient to Sample mapping
-    #logger.info("%d lines after filtering", len(cm))
     patients = readPatientToSample(args.patientToSample)
 
     # Match samples to patients
+    logger.info("Matching samples to patients")
     matchSamplesToPatients(patients, args.meltedResults_s3path, args.meltedResults_localpath,
                            args.threshold, args.resultsFile)
+    logger.info("Done.")
 
 def matchSamplesToPatients(patients, meltedResults_s3path, meltedResults_localpath, threshold, resultsFile):
-    # Scan each patient
-    # For each sample, make sure the top match is another sample from the same patient
+    '''
+    Match samples to patient, find swaps, etc.
+    For each patient that has more than 1 sample
+      i. For each sample
+        1) Read <sample>.meltedResults.txt
+        2) Check best matching sample (BMS)
+        3) If BMS is from the same patient, all is okay, else report BMS.
+
+    :param patients: list of patient -> samples
+    :param meltedResults_s3path: S3 Path to meltedResults files (mutually exclusive with meltedResults_localpath)
+    :param meltedResults_localpath: Local path to meltedResults files (m.e with meltedResults_s3path)
+    :param threshold: Minimum # of SNPs compared against sample
+    :param resultsFile: Output results files
+    '''
     totalSamples = 0
     missingSamples = []
     badSamples = []
@@ -74,19 +83,23 @@ def matchSamplesToPatients(patients, meltedResults_s3path, meltedResults_localpa
       output.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\n")
       for patient in patients:
         samples = patients[patient]
-        logger.info("Patient: %s, Samples: %s", patient, samples)
+        logger.debug("Patient: %s, Samples: %s", patient, samples)
         if len(samples) > 1:
             for sample in samples:
                 # Get the sample meltedResults
                 if meltedResults_s3path:
                     meltedResultsFile = "%s.meltedResults.txt" % sample
                     downloadFile("%s/%s.meltedResults.txt" % (meltedResults_s3path, sample), meltedResultsFile)
+                    if not os.path.exists(meltedResultsFile):
+                        logger.error("Unable to download %s", meltedResultsFile)
+                        missingSamples.append(sample)
+                        continue
                 else:
                     meltedResultsFile = "%s/%s.meltedResults.txt" % (meltedResults_localpath, sample)
-                if not os.path.exists(meltedResultsFile):
-                    logger.error("Unable to download %s", meltedResultsFile)
-                    missingSamples.append(sample)
-                    continue
+                    if not os.path.exists(meltedResultsFile):
+                        logger.error("%s not found", meltedResultsFile)
+                        missingSamples.append(sample)
+                        continue
                 cm = read_csv(meltedResultsFile, sep="\t")
                 if meltedResults_s3path:
                     os.remove(meltedResultsFile)
@@ -107,7 +120,7 @@ def matchSamplesToPatients(patients, meltedResults_s3path, meltedResults_localpa
                     else:
                         if topMatch in samples:
                             matchedSamples += 1
-                            logger.info("%s -> %s", sample, topMatch)
+                            logger.debug("%s -> %s", sample, topMatch)
                         else:
                             logger.warn("%s -> %s:%s", sample, patient, topMatch)
                             mismatchedSamples.append(sample)
