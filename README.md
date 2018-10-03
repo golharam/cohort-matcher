@@ -4,9 +4,7 @@
 
 # cohort-matcher #
 
-A workflow for comparing two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled implementation of BAM-matcher.
-
-BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exome-sequencing (WES) and RNA-sequencing (RNA-seq) human data, but can also be customised to compare panel data or non-human data.
+A workflow for comparing multiple cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
 
 # Algorithm #
 
