@@ -10,7 +10,7 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 
 The basic workflow consists of:
 1. Genotype all the samples to be compared. (genotypeSamples.py)
-2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py)
+2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
 3. Merge the results of the sample comparisons
 4. Generate plots based on results and known patient-to-sample assocation.
 
