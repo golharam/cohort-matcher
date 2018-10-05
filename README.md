@@ -31,9 +31,13 @@ OR
 
 Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
 
-Reference/Target Paths :
+Reference/Target Paths for GRCh37ERCC:
   - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2
   - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
+  
+Reference/Target Paths for hg19:
+  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
+  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
 
 # How to run #
 
