@@ -1,3 +1,4 @@
+import collections
 import boto3
 import botocore
 import logging
@@ -85,8 +86,11 @@ def readSamples(sampleSheetFile):
             sample = {"name": fields[0],
                       "bam": fields[1]}
             samples.append(sample)
-    if len(sampleNames) != len(set(sampleNames)):
+    duplicates = [item for item, count in collections.Counter(sampleNames).items() if count > 1]
+    if duplicates:
         logger.error("Duplicate sampleids found in %s", sampleSheetFile)
+        for dup in duplicates:
+            logger.error(dup)
         return False
     logger.info("Read %d samples.", len(samples))
     return samples
