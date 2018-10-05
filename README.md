@@ -43,6 +43,15 @@ sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-en
 set2.txt:
 sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
 
+2.  Call genotypeSamples.py
+
+For each set of samples mapped to a reference, call genotypeSamples.py.  For instance, if you are comparing two sets of BAM files, where one set is mapped to hg19, and the other set is mapped to GRCh37, you will call genotypeSamples.py.  Once for the set mapped to hg19, and a second time for the set mapped to GRCh37.
+
+Reference/Target Path for GRCh37ERCC:
+  - s3://bmsrd-ngs-repo/reference/GRCh37ERCC/GRCh37ERCC.fa
+  - s3://bmsrd-ngs-repo/cohort-matcher/references/GRCh37ERCC/GRCh37ERCC.cohort-matcher.bed
+
+
 ## Variant Callers ##
 
 (Require at least one)
