@@ -63,7 +63,7 @@ def parseArguments(argv):
     parser.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
 
     parser.add_argument('-r', '--reference_s3_path', required=True,
-                        help='S3 Path to Reference Fastq File')
+                        help='S3 Path to Reference Fastq File (bzip2)')
     parser.add_argument('-t', '--targets_s3_path', required=True,
                         help="S3 Path to Targets BED File")
 
