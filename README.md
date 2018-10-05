@@ -27,9 +27,13 @@ Samples must be mapped against either:
 
 OR
 
-2) hg38 or GRCh38.
+2) hg38 or GRCh38
 
 Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
+
+Reference/Target Paths :
+  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2
+  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
 
 # How to run #
 
@@ -46,9 +50,6 @@ sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
 2.  Call genotypeSamples.py
 
 For each set of samples mapped to a reference, call genotypeSamples.py.  For instance, if you are comparing two sets of BAM files, where one set is mapped to hg19, and the other set is mapped to GRCh37, you will call genotypeSamples.py.  Once for the set mapped to hg19, and a second time for the set mapped to GRCh37.
-
-Reference Paths :
-  - s3://bmsrd-ngs-repo/cohort-matcher/references/GRCh37ERCC.tar.bz2
 
 
 ## Variant Callers ##
