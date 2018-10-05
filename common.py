@@ -57,6 +57,7 @@ def readSamples(sampleSheetFile):
     '''
     readSamples reads in a sampleSheetFile consisting of two columns:
     name and bamfile
+    If the sampleSheetFile only has 1 column, assume its the s3 path, and derive the samplename from the bamfile.
     :param sampleSheetFile: tab-delimited file of samplename and s3 bamfile path
     :return: list of {name, bam} dictionaries
     '''
@@ -74,9 +75,11 @@ def readSamples(sampleSheetFile):
 
             fields = line.split('\t')
             if len(fields) != 2:
-                logger.error("Expect 2 fields (sampleName, bamFile) but encountered %d",
-                             len(fields))
-                return False
+                # Derive the sample name from the BAM file
+                bam_file = os.path.basename(fields[0])
+                sample_name = bam_file.split('.')[0]
+                fields.append(fields[0])
+                fields[0] = sample_name
 
             sampleNames.append(fields[0])
             sample = {"name": fields[0],
