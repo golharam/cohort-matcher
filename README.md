@@ -20,7 +20,7 @@ In order to efficiently, some steps are parallelized to reduce runtime.  Specifi
 
 # Genome Reference #
 
-The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg39 / GRCh38). 
+The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg38 / GRCh38). 
 Samples must be mapped against either: 
 
 1) hg19 or GRCh37
@@ -42,23 +42,6 @@ sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-en
 
 set2.txt:
 sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
-
-2.  Call run-cohort-matcher.py
-
-```
-/ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/run_cohort_matcher.py \
-        --set1 cohort1.txt --set2 cohort2.txt
-        --s3_cache_folder s3://bmsrd-ngs-results/P-12345678-1234/cohort-matcher/cache
-        --reference [hg19, GRCh37, hg38, GRCh38]
-        --reference2 [hg19, GRCh37, hg38, GRCh38] (if different from set1)
-        --s3_output_folder s3://bmsrd-ngs-results/P-12345678-1234/cohort-matcher
-```
-
-which will output a series of files indicating sample similarity include:
-cohort-matcher-results.txt
-cohort-matcher-results.pdf
-topmatches.txt
-meltedResults.txt
 
 ## Variant Callers ##
 
@@ -91,7 +74,7 @@ The code is released under the Creative Commons by Attribution licence (http://c
 
 # Citation #
 
-*cohort-matcher* - submitted
+*cohort-matcher* - in prep
 
 # Contact #
 
