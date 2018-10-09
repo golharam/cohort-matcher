@@ -2,7 +2,7 @@ library(gplots)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
-  cohort_matcher_results <- "cohort-matcher-results.txt"
+  cohort_matcher_results <- "meltedResults.txt"
   total_compared_file <- "cohort-matcher-results.total_compared.txt"
 } else {
   cohort_matcher_results <- args[1]
@@ -17,7 +17,7 @@ reportTopMatches <- function(x, topMatchesFile, ...) {
   f <- file(topMatchesFile, "w")
   writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
   for (sample in rownames(x)) {
-    sample_matches <- sort(x[sample,], decreasing=TRUE)
+    sample_matches <- sort(x[sample,], cohortdecreasing=TRUE)
     writeLines(paste(sample,
                      colnames(sample_matches[1]), sample_matches[1,1],
                      colnames(sample_matches[2]), sample_matches[1,2],
