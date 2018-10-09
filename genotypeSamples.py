@@ -38,10 +38,10 @@ def main(argv):
             else:
                 logger.info("Genotype %s", sampleName)
                 response = batch.submit_job(jobName='freebayes-%s' % sampleName,
-                                            jobQueue='ngs-spot-job-queue',
-                                            jobDefinition='freebayes:1',
+                                            jobQueue=args.job_queue,
+                                            jobDefinition=args.job_definition,
                                             containerOverrides={
-                                                'memory': 4096,
+                                                'memory': args.memory,
                                                 'command': ["--sample_name", sampleName,
                                                             "--bamfile_s3_path", sample['bam'],
                                                             "--targets_s3_path", args.targets_s3_path,
@@ -69,6 +69,14 @@ def parseArguments(argv):
 
     parser.add_argument('-o', '--outputfolder_s3_path', required=True, 
                         help="Specify S3 path for cached VCF/TSV files")
+
+    parser.add_argument('-q', '--job-queue', action="store", default="ngs-spot-job-queue",
+                        help="AWS Batch Job Queue")
+    parser.add_argument('-j', '--job-definition', action="store", default="freebayes:1",
+                        help="AWS Batch Job Definition")
+    parser.add_argument('-m', '--memory', action="store", default=4096, type=int,
+                        help="Memory Required (MB)")
+
 
     args = parser.parse_args(argv)
     return args
