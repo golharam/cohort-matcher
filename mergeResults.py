@@ -36,14 +36,19 @@ def main(argv):
 
     meltedResultsFile = "%s/meltedResults.txt" % args.working_dir
     with open(meltedResultsFile, 'w') as outfile:
+        header_written = False
         for i, fname in enumerate(localFiles):
             logger.info("[%d/%d] Merging %s -> %s", i+1, len(localFiles), fname, meltedResultsFile)
             with open(fname) as infile:
-                # For large files
-                for line in infile:
-                    outfile.write(line)
-                # For small files
-                #outfile.write(infile.read()) 
+                if header_written is False:
+                    # Write complete file out
+                    outfile.write(infile.read())
+                    header_written = True
+                else:
+                    # Skip first line and write out rest
+                    next(infile)
+                    for line in infile:
+                        outfile.write(line)
 
 def parseArguments(argv):
     ''' Parse arguments '''
