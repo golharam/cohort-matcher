@@ -17,7 +17,7 @@ reportTopMatches <- function(x, topMatchesFile, ...) {
   f <- file(topMatchesFile, "w")
   writeLines(paste("sample", "match1", "score1", "match2", "score2", "match3", "score3", "match4", "score4", "match5", "score5", sep="\t"), f)
   for (sample in rownames(x)) {
-    sample_matches <- sort(x[sample,], cohortdecreasing=TRUE)
+    sample_matches <- sort(x[sample,], decreasing=TRUE)
     writeLines(paste(sample,
                      colnames(sample_matches[1]), sample_matches[1,1],
                      colnames(sample_matches[2]), sample_matches[1,2],
