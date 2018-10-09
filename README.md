@@ -11,7 +11,7 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 The basic workflow consists of:
 1. Genotype all the samples to be compared. (genotypeSamples.py)
 2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
-3. Merge the results of the sample comparisons
+3. Merge the results of the sample comparisons (mergeResults.py)
 4. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
@@ -55,6 +55,9 @@ sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
 
 For each set of samples mapped to a reference, call genotypeSamples.py.  For instance, if you are comparing two sets of BAM files, where one set is mapped to hg19, and the other set is mapped to GRCh37, you will call genotypeSamples.py.  Once for the set mapped to hg19, and a second time for the set mapped to GRCh37.
 
+3.  Call mergeResults.py
+
+This will merge the results of all the per-sample genotype comparison meltedResults into a single meltedResults.txt file.
 
 ## Variant Callers ##
 
