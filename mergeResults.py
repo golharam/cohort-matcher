@@ -7,7 +7,8 @@ import boto3
 import logging
 import os
 import sys
-
+import pandas as pd
+import numpy as np
 from common import find_bucket_key, listFiles, downloadFile
 
 __appname__ = 'mergeResults'
@@ -49,6 +50,14 @@ def main(argv):
                     next(infile)
                     for line in infile:
                         outfile.write(line)
+
+    # Clean up the meltedResults file and make sure there are no duplicate entries
+    # https://stackoverflow.com/questions/44456186/removing-reversed-duplicates
+    df = pd.read_table(meltedResultsFile)
+    cols = ['Sample1', 'Sample2']
+    df[cols] = np.sort(df[cols].values, axis=1)
+    df = df.drop_duplicates()
+    df.to_csv(meltedResultsFile, sep="\t", index=False)
 
 def parseArguments(argv):
     ''' Parse arguments '''
