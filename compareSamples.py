@@ -52,7 +52,7 @@ def main(argv):
                                                                                 '-s', sample,
                                                                                 '--s3_cache_folder',
                                                                                 args.s3_cache_folder]})
-                    jobCount += 1
+            jobCount += 1
 
     if args.dry_run:
         logger.info("Would have submitted %s jobs", jobCount)
