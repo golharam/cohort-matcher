@@ -41,7 +41,7 @@ Reference/Target Paths for hg19:
 
 # How to run #
 
-1.  Make input bamsheets
+Pre-req.  Make input bamsheets
 
 Construct a single 2 column tab-delimited file consisting of sampleName and S3 path to the sample's bamfile, for each set of samples mapped to a specific reference. For instance, if comparing a set of samples all mapped to GRCh38, create 1 TSV file.  If compare two sets of samples mapped to two different references (hg39 and GRCh38), create two TSV files, one for each set of samples.
 
@@ -51,9 +51,13 @@ sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-en
 set2.txt:
 sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
 
-2.  Call genotypeSamples.py
+1.  Call genotypeSamples.py
 
 For each set of samples mapped to a reference, call genotypeSamples.py.  For instance, if you are comparing two sets of BAM files, where one set is mapped to hg19, and the other set is mapped to GRCh37, you will call genotypeSamples.py.  Once for the set mapped to hg19, and a second time for the set mapped to GRCh37.
+
+2.  Call compareSamples.py
+
+For each sample genotypes, compareSamples will submit an AWS Batch for compareGenotypes, which will compare the genotype of the sample of interest against all the other samples.
 
 3.  Call mergeResults.py
 
