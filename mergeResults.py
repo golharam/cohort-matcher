@@ -8,7 +8,6 @@ import logging
 import os
 import sys
 import pandas as pd
-import numpy as np
 from common import find_bucket_key, listFiles, downloadFile
 
 __appname__ = 'mergeResults'
@@ -53,11 +52,21 @@ def main(argv):
 
     # Clean up the meltedResults file and make sure there are no duplicate entries
     # https://stackoverflow.com/questions/44456186/removing-reversed-duplicates
-    df = pd.read_table(meltedResultsFile)
-    cols = ['Sample1', 'Sample2']
-    df[cols] = np.sort(df[cols].values, axis=1)
-    df = df.drop_duplicates()
-    df.to_csv(meltedResultsFile, sep="\t", index=False)
+    data = pd.read_table(meltedResultsFile)
+    # Add duplicate column
+    data['duplicate'] = False
+    # Scan table for duplicate rows
+    for index, row in data.iterrows():
+        s1 = row['Sample1']
+        s2 = row['Sample2']
+        data_row = data.iloc[ index ]
+        if data_row['duplicate'] == False:
+            dup_row = data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1) ]
+            if not dup_row.empty:
+                data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1), 'duplicate' ] = True
+    # Subset data
+    data = data.loc[ data['duplicate'] == False ]
+    data.to_csv(meltedResultsFile, sep="\t", index=False)
 
 def parseArguments(argv):
     ''' Parse arguments '''
