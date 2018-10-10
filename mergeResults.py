@@ -56,16 +56,20 @@ def main(argv):
     # Add duplicate column
     data['duplicate'] = False
     # Scan table for duplicate rows
+    row_count = len(data)
     for index, row in data.iterrows():
         s1 = row['Sample1']
         s2 = row['Sample2']
+        logger.info("[%d/%d] Checking %s - %s", index, row_count, s1, s2)
         data_row = data.iloc[ index ]
         if data_row['duplicate'] == False:
             dup_row = data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1) ]
             if not dup_row.empty:
                 data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1), 'duplicate' ] = True
     # Subset data
+    logger.info("Removing duplicate rows")
     data = data.loc[ data['duplicate'] == False ]
+    logger.info("Saving %s", meltedResultsFile)
     data.to_csv(meltedResultsFile, sep="\t", index=False)
 
 def parseArguments(argv):
