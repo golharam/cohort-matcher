@@ -60,7 +60,7 @@ def main(argv):
     for index, row in data.iterrows():
         s1 = row['Sample1']
         s2 = row['Sample2']
-        logger.info("[%d/%d] Checking %s - %s", index, row_count, s1, s2)
+        logger.info("[%d/%d] Checking %s - %s", index+1, row_count, s1, s2)
         data_row = data.iloc[ index ]
         if data_row['duplicate'] == False:
             dup_row = data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1) ]
