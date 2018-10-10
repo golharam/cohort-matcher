@@ -50,6 +50,7 @@ def main(argv):
                     for line in infile:
                         outfile.write(line)
 
+    logger.info("Cleaning meltedResults")
     # Clean up the meltedResults file and make sure there are no duplicate entries
     # https://stackoverflow.com/questions/44456186/removing-reversed-duplicates
     data = pd.read_table(meltedResultsFile)
