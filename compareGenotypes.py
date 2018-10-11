@@ -202,11 +202,19 @@ def main(argv):
     s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sampleName)
     vcfFile = "%s/%s.vcf" % (working_dir, sampleName)
     downloadFile(s3_vcfFile, vcfFile)
-    tsvFile = "%s/%s.tsv" % (working_dir, sampleName)
-    VCFtoTSV(vcfFile, tsvFile)
-    var_list = get_tsv_variants(tsvFile, args.dp_threshold)
-    os.remove(vcfFile)
-    os.remove(tsvFile)
+    if os.path.exists(vcfFile):
+        tsvFile = "%s/%s.tsv" % (working_dir, sampleName)
+        VCFtoTSV(vcfFile, tsvFile)
+        if os.path.exists(tsvFile):
+            var_list = get_tsv_variants(tsvFile, args.dp_threshold)
+            os.remove(tsvFile)
+        else:
+            logger.error("Failed to convert VCF to TSV, %s -> %s", vcfFile, tsvFile)
+            return -1 
+        os.remove(vcfFile)
+    else:
+        logger.error("Failed to download %s", s3_vcfFile)
+        return -1
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     fout = open(meltedResultsFile, "w")
@@ -301,7 +309,7 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     fout.write("%s\n" % "\t".join(fields_to_extract))
     try:
       for var in vcf_in:
-        logger.debug("%s:%s", var.CHROM, var.POS)
+        logger.debug("%s - %s:%s", invcf, var.CHROM, var.POS)
         chrom_ = var.CHROM.replace("chr", "")
         pos_ = str(var.POS)
         ref_ = var.REF
