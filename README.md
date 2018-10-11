@@ -41,15 +41,18 @@ Reference/Target Paths for hg19:
 
 # How to run #
 
-Pre-req.  Make input bamsheets
+Pre-req:  Make input bamsheet
 
-Construct a single 2 column tab-delimited file consisting of sampleName, S3 path to the sample's bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC). 
+Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC). For example
 
-set1.txt:
-sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-ensembl91.bam
+P-1234.bamsheet.txt:
 
-set2.txt:
-sample2 s3://bmsrd-ngs-results/P-12345678-1234/WES/bam/sample2.hg38.bam
+| sample  | s3 path to bamfile | reference |
+| ------------- | ------------- | ----- |
+| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
+| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
+
+
 
 1.  Call genotypeSamples.py
 
