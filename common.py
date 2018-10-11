@@ -56,11 +56,10 @@ def listFiles(s3_cache_dir, suffix=None):
 
 def readSamples(sampleSheetFile):
     '''
-    readSamples reads in a sampleSheetFile consisting of two columns:
-    name and bamfile
-    If the sampleSheetFile only has 1 column, assume its the s3 path, and derive the samplename from the bamfile.
-    :param sampleSheetFile: tab-delimited file of samplename and s3 bamfile path
-    :return: list of {name, bam} dictionaries
+    readSamples reads in a sampleSheetFile consisting of three columns:
+    name, bamfile, reference
+    :param sampleSheetFile: tab-delimited file 
+    :return: list of {name, bam, reference} dictionaries
     '''
     if os.path.isfile(sampleSheetFile) is False:
         logger.error("%s does not exist", sampleSheetFile)
@@ -75,16 +74,14 @@ def readSamples(sampleSheetFile):
                 continue
 
             fields = line.split('\t')
-            if len(fields) != 2:
-                # Derive the sample name from the BAM file
-                bam_file = os.path.basename(fields[0])
-                sample_name = bam_file.split('.')[0]
-                fields.append(fields[0])
-                fields[0] = sample_name
+            if len(fields) != 3:
+                logger.error("Expected 3 columns in samplesheet, but found %s", len(fields))
+                return False
 
             sampleNames.append(fields[0])
             sample = {"name": fields[0],
-                      "bam": fields[1]}
+                      "bam": fields[1],
+                      "reference": fields[2]}
             samples.append(sample)
     duplicates = [item for item, count in collections.Counter(sampleNames).items() if count > 1]
     if duplicates:
