@@ -56,7 +56,9 @@ P-1234.bamsheet.txt:
 
 1.  Call genotypeSamples.py
 
-For each set of samples mapped to a reference, call genotypeSamples.py.  For instance, if you are comparing two sets of BAM files, where one set is mapped to hg19, and the other set is mapped to GRCh37, you will call genotypeSamples.py.  Once for the set mapped to hg19, and a second time for the set mapped to GRCh37.
+```
+genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
 
 2.  Call compareSamples.py
 
