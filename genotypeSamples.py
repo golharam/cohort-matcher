@@ -11,7 +11,7 @@ import sys
 from common import find_bucket_key, listFiles, readSamples
 
 __appname__ = 'genotypeSamples'
-__version__ = "0.1"
+__version__ = "0.2"
 
 logger = logging.getLogger(__appname__)
 
@@ -33,10 +33,20 @@ def main(argv):
         sampleName = sample['name']
         vcfFile = "%s/%s.vcf" % (args.outputfolder_s3_path, sampleName)
         if vcfFile not in vcfFiles:
-            if args.dryRun:
-                logger.info("Would genotype %s", sampleName)
+            logger.info("Genotyping %s", sampleName)
+            if sample['reference'] == 'hg19':
+                reference_s3_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2"
+                targets_s3_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed"
+            elif sample['reference'] == 'GRCh37ERCC':
+                reference_s3_path = "s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2"
+                targets_s3_path = "s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed"
             else:
-                logger.info("Genotype %s", sampleName)
+                logger.warn("Skipping %s due to unknown reference", sampleName)
+                continue
+            
+            if args.dryRun:
+                logger.info("Would call batch.submit_job")
+            else:
                 response = batch.submit_job(jobName='freebayes-%s' % sampleName,
                                             jobQueue=args.job_queue,
                                             jobDefinition=args.job_definition,
@@ -44,8 +54,8 @@ def main(argv):
                                                 'memory': args.memory,
                                                 'command': ["--sample_name", sampleName,
                                                             "--bamfile_s3_path", sample['bam'],
-                                                            "--targets_s3_path", args.targets_s3_path,
-                                                            "--reference_s3_path", args.reference_s3_path,
+                                                            "--targets_s3_path", targets_s3_path,
+                                                            "--reference_s3_path", reference_s3_path,
                                                             "--s3_output_folder_path", args.outputfolder_s3_path]
                                             })
                 logger.debug(response)
