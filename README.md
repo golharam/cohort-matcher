@@ -43,7 +43,7 @@ Reference/Target Paths for hg19:
 
 Pre-req.  Make input bamsheets
 
-Construct a single 2 column tab-delimited file consisting of sampleName and S3 path to the sample's bamfile, for each set of samples mapped to a specific reference. For instance, if comparing a set of samples all mapped to GRCh38, create 1 TSV file.  If compare two sets of samples mapped to two different references (hg39 and GRCh38), create two TSV files, one for each set of samples.
+Construct a single 2 column tab-delimited file consisting of sampleName, S3 path to the sample's bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC). 
 
 set1.txt:
 sample1 s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh38ERCC-ensembl91.bam
