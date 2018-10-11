@@ -57,26 +57,26 @@ def parseArguments(argv):
     parser = argparse.ArgumentParser(description='Genotype a set of samples')
     parser.add_argument('--log-level', help="Prints warnings to console by default",
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-
     parser.add_argument('-d', '--dryRun', default=False, action="store_true",
                         help="Simulate job submission")
-    parser.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
 
-    parser.add_argument('-r', '--reference_s3_path', required=True,
-                        help='S3 Path to Reference Fastq File (bzip2)')
-    parser.add_argument('-t', '--targets_s3_path', required=True,
-                        help="S3 Path to Targets BED File")
+    required_args = parser.add_argument_group("Required")
+    required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
+    required_args.add_argument('-o', '--outputfolder_s3_path', required=True,
+                               help="Specify S3 path for cached VCF/TSV files")
 
-    parser.add_argument('-o', '--outputfolder_s3_path', required=True, 
-                        help="Specify S3 path for cached VCF/TSV files")
+    #parser.add_argument('-r', '--reference_s3_path', required=True,
+    #                    help='S3 Path to Reference Fastq File (bzip2)')
+    #parser.add_argument('-t', '--targets_s3_path', required=True,
+    #                    help="S3 Path to Targets BED File")
 
-    parser.add_argument('-q', '--job-queue', action="store", default="ngs-spot-job-queue",
-                        help="AWS Batch Job Queue")
-    parser.add_argument('-j', '--job-definition', action="store", default="freebayes:1",
-                        help="AWS Batch Job Definition")
-    parser.add_argument('-m', '--memory', action="store", default=4096, type=int,
-                        help="Memory Required (MB)")
-
+    job_args = parser.add_argument_group("AWS Batch Job Settings") 
+    job_args.add_argument('-q', '--job-queue', action="store", default="ngs-spot-job-queue",
+                          help="AWS Batch Job Queue")
+    job_args.add_argument('-j', '--job-definition', action="store", default="freebayes:1",
+                          help="AWS Batch Job Definition")
+    job_args.add_argument('-m', '--memory', action="store", default=4096, type=int,
+                          help="Memory Required (MB)")
 
     args = parser.parse_args(argv)
     return args
