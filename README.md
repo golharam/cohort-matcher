@@ -43,7 +43,7 @@ Reference/Target Paths for hg19:
 
 Pre-req:  Make input bamsheet
 
-Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC). For example
+Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
 
 P-1234.bamsheet.txt:
 
