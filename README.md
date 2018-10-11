@@ -62,7 +62,9 @@ genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohor
 
 2.  Call compareSamples.py
 
-For each sample genotypes, compareSamples will submit an AWS Batch for compareGenotypes, which will compare the genotype of the sample of interest against all the other samples.
+```
+compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
 
 3.  Call mergeResults.py
 
