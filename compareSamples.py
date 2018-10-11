@@ -22,7 +22,7 @@ import logging
 import os
 import sys
 
-from common import find_bucket_key, listFiles, readSamples
+from common import find_bucket_key, listFiles, readSamples, uploadFile
 
 __appname__ = 'compareSamples'
 __version__ = "0.2"
@@ -56,7 +56,7 @@ def main(argv):
         if meltedResults not in meltedResultsFiles:
             logger.info("Comparing genotype of %s to other samples", sample['name'])
             if args.dry_run:
-                logger.info("Would call batch.submit_job")
+                logger.info("Would call batch.submit_job: compareGenotypes.py -s %s --s3_cache_folder %s", sample['name'], args.s3_cache_folder)
             else:
                 response = batch.submit_job(jobName='compareGenotypes-%s' % sample,
                                             jobQueue=args.job_queue,
