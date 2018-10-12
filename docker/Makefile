@@ -1,10 +1,10 @@
 NAME=cohort-matcher
 REGISTRY=483421617021.dkr.ecr.us-east-1.amazonaws.com
-VERSION=2.0
-PROXY=--build-arg http_proxy=http://proxy-server.bms.com:8080 \
-      --build-arg https_proxy=http://proxy-server.bms.com:8080 \
-      --build-arg ftp_proxy=http://proxy-server.bms.com:8080
-#PROXY=
+VERSION=0.2
+#PROXY=--build-arg http_proxy=http://proxy-server.bms.com:8080 \
+#      --build-arg https_proxy=http://proxy-server.bms.com:8080 \
+#      --build-arg ftp_proxy=http://proxy-server.bms.com:8080
+PROXY=
 
 all: build 
 

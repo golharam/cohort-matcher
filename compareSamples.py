@@ -58,7 +58,7 @@ def main(argv):
             if args.dry_run:
                 logger.info("Would call batch.submit_job: compareGenotypes.py -s %s --s3_cache_folder %s", sample['name'], args.s3_cache_folder)
             else:
-                response = batch.submit_job(jobName='compareGenotypes-%s' % sample,
+                response = batch.submit_job(jobName='compareGenotypes-%s' % sample['name'],
                                             jobQueue=args.job_queue,
                                             jobDefinition=args.job_definition,
                                             containerOverrides={'vcpus': 1,
@@ -84,7 +84,7 @@ def parseArguments(argv):
     job_args = parser.add_argument_group("AWS Batch Job Settings")
     job_args.add_argument('-q', "--job-queue", action="store", default="ngs-spot-job-queue",
                           help="AWS Batch Job Queue")
-    job_args.add_argument('-j', '--job-definition', action="store", default="cohort-matcher:3",
+    job_args.add_argument('-j', '--job-definition', action="store", default="cohort-matcher:2",
                           help="AWS Batch Job Definition")
     args = parser.parse_args(argv)
     return args
