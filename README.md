@@ -68,7 +68,9 @@ compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohor
 
 3.  Call mergeResults.py
 
-This will merge the results of all the per-sample genotype comparison meltedResults into a single meltedResults.txt file.
+```
+mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
 
 ## Variant Callers ##
 
