@@ -12,7 +12,7 @@ import sys
 from common import downloadFile, uploadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
-__version__ = "0.1"
+__version__ = "0.2"
 
 logger = logging.getLogger(__appname__)
 
@@ -199,6 +199,18 @@ def main(argv):
     logger.info("Working in %s", working_dir)
 
     sampleName = args.sample
+    # Download and read the bamsheet from the s3 cache directory
+    downloadFile("%s/bamsheet.txt" % args.s3_cache_folder, "%s/bamsheet.txt" % working_dir)
+    samples = readSamples("%s/bamsheet.txt" % working_dir)
+    sample_index = -1
+    for i, s in enumerate(samples):
+        if s['name'] == sampleName:
+            sample_index = i
+    if sample_index == -1:
+        logger.error("Unable to locate sample in bamsheet")
+        return -1
+
+    # Get the list of variants in the reference sample
     s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sampleName)
     vcfFile = "%s/%s.vcf" % (working_dir, sampleName)
     downloadFile(s3_vcfFile, vcfFile)
@@ -217,41 +229,37 @@ def main(argv):
         return -1
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
-    fout = open(meltedResultsFile, "w")
-    fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
+    with open(meltedResultsFile, "w") as fout:
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
+        sample_index += 1
+        while sample_index < len(samples):
+            sample = samples[sample_index]
+            logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples), sampleName, sample['name'])
 
-    files = listFiles(args.s3_cache_folder, suffix=".vcf")
-    i = 0
-    for s3_vcfFile in files:
-        i = i + 1
-        sample2 = os.path.basename(s3_vcfFile).replace(".vcf", "")
-        if sample2 == sampleName:
-            continue
-        logger.info("[%d/%d] Comparing %s - %s", i, len(files), sampleName, sample2)
-        
-        vcfFile2 = "%s/%s.vcf" % (working_dir, sample2)
-        downloadFile(s3_vcfFile, vcfFile2)
-        tsvFile2 = "%s/%s.tsv" % (working_dir, sample2)
-        VCFtoTSV(vcfFile2, tsvFile2)
-        var_list2 = get_tsv_variants(tsvFile2, args.dp_threshold)
-        os.remove(vcfFile2)
-        os.remove(tsvFile2)
+            s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
+            vcfFile = "%s/%s.vcf" % (working_dir, sample['name'])
+            downloadFile(s3_vcfFile, vcfFile)
+            tsvFile = vcfFile.replace('.vcf', '.tsv')
+            VCFtoTSV(vcfFile, tsvFile)
+            var_list2 = get_tsv_variants(tsvFile, args.dp_threshold)
+            os.remove(vcfFile)
+            os.remove(tsvFile)
 
-        # compare the genotypes
-        intersection = getIntersectingVariants(var_list, var_list2)
-        results = compareGenotypes(var_list, var_list2, intersection)
-        logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
-                    results['short_judgement'])
+            # compare the genotypes
+            intersection = getIntersectingVariants(var_list, var_list2)
+            results = compareGenotypes(var_list, var_list2, intersection)
+            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
+                        results['short_judgement'])
 
-        n1 = '%d' % len(var_list)
-        n2 = '%d' % len(var_list2)
-        fm = '%.4f' % results['frac_common']
-        tc = '%d' % results['total_compared']
-        j = results['short_judgement']
-        fout.write(sampleName + "\t" + sample2 + "\t" +
-                   n1 + "\t" + n2 + "\t" +
-                   tc + "\t" + fm + "\t" + j + "\n")
-    fout.close()
+            n1 = '%d' % len(var_list)
+            n2 = '%d' % len(var_list2)
+            fm = '%.4f' % results['frac_common']
+            tc = '%d' % results['total_compared']
+            j = results['short_judgement']
+            fout.write(sampleName + "\t" + sample['name'] + "\t" +
+                       n1 + "\t" + n2 + "\t" +
+                       tc + "\t" + fm + "\t" + j + "\n")
+            sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
 
@@ -266,12 +274,12 @@ def parseArguments(argv):
     parser.add_argument('--log-level', help="Prints warnings to console by default",
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
-    parser.add_argument('-s', '--sample', required=True, help="Sample of interest")
-    parser.add_argument("--s3_cache_folder", "-CD", required=True, 
-                        help="Specify S3 path for cached VCF/TSV files")
+    required_args = parser.add_argument_group("Required")
+    required_args.add_argument('-s', '--sample', required=True, help="Sample of interest")
+    required_args.add_argument("--s3_cache_folder", "-CD", required=True,
+                               help="Specify S3 path for cached VCF/TSV files")
 
     parser.add_argument('--working_dir', type=str, default='/scratch')
-
     parser.add_argument("-t", "--dp_threshold", default=15, help="Depth of Coverage Threshold")
 
     args = parser.parse_args(argv)
