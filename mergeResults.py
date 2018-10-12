@@ -8,10 +8,10 @@ import logging
 import os
 import sys
 import pandas as pd
-from common import find_bucket_key, listFiles, downloadFile
+from common import find_bucket_key, listFiles, downloadFile, readSamples, uploadFile
 
 __appname__ = 'mergeResults'
-__version__ = "0.1"
+__version__ = "0.2"
 
 logger = logging.getLogger(__appname__)
 
@@ -22,23 +22,27 @@ def main(argv):
     logger.info("%s v%s" % (__appname__, __version__))
     logger.info(args)
 
-    # Get a list of meltedResults files
-    meltedResultsFiles = listFiles(args.s3_cache_folder, suffix=".meltedResults.txt")
-    logger.info("Found %s melted result files", len(meltedResultsFiles))
+    samples = readSamples(args.bamsheet)
+    # We don't need the last sample in the list so let's remove it
+    samples.pop()
 
-    localFiles = []
-    for i, meltedResultFile in enumerate(meltedResultsFiles):
-        f = "%s/%s" % (args.working_dir, os.path.basename(meltedResultFile))
-        if os.path.exists(f) is False:
-            logger.info("[%d/%d] Downloading %s -> %s", i+1, len(meltedResultsFiles), meltedResultFile, f)
-            downloadFile(meltedResultFile, f)
-        localFiles.append(f)
+    # Get a list of meltedResults files
+    #meltedResultsFiles = listFiles(args.s3_cache_folder, suffix=".meltedResults.txt")
+    #logger.info("Found %s melted result files", len(meltedResultsFiles))
+
+    localMeltedResultsFiles = []
+    for i, sample in enumerate(samples):
+        meltedResultFile = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
+        f = "%s/%s.meltedResults.txt" % (args.working_dir, sample['name'])
+        logger.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
+        downloadFile(meltedResultFile, f)
+        localMeltedResultsFiles.append(f)
 
     meltedResultsFile = "%s/meltedResults.txt" % args.working_dir
     with open(meltedResultsFile, 'w') as outfile:
         header_written = False
-        for i, fname in enumerate(localFiles):
-            logger.info("[%d/%d] Merging %s -> %s", i+1, len(localFiles), fname, meltedResultsFile)
+        for i, fname in enumerate(localMeltedResultsFiles):
+            logger.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname, meltedResultsFile)
             with open(fname) as infile:
                 if header_written is False:
                     # Write complete file out
@@ -50,37 +54,24 @@ def main(argv):
                     for line in infile:
                         outfile.write(line)
 
-    logger.info("Cleaning meltedResults")
-    # Clean up the meltedResults file and make sure there are no duplicate entries
-    data = pd.read_table(meltedResultsFile)
-    # Add duplicate column
-    data['duplicate'] = False
-    # Scan table for duplicate rows
-    row_count = len(data)
-    for index, row in data.iterrows():
-        s1 = row['Sample1']
-        s2 = row['Sample2']
-        logger.info("[%d/%d] Checking %s - %s", index+1, row_count, s1, s2)
-        data_row = data.iloc[ index ]
-        if data_row['duplicate'] == False:
-            dup_row = data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1) ]
-            if not dup_row.empty:
-                data.loc[ (data['Sample1'] == s2) & (data['Sample2'] == s1), 'duplicate' ] = True
-    # Subset data
-    logger.info("Removing duplicate rows")
-    data = data.loc[ data['duplicate'] == False ]
-    logger.info("Saving %s", meltedResultsFile)
-    data.to_csv(meltedResultsFile, sep="\t", index=False)
+    s3_path = "%s/meltedResults.txt" % args.s3_cache_folder
+    logger.info("Uploading %s -> %s", meltedResultsFile, s3_path)
+    uploadFile(meltedResultsFile, s3_path)
+    logger.info("Done.")
 
 def parseArguments(argv):
     ''' Parse arguments '''
-    parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
+    parser = argparse.ArgumentParser(description='Merge set of meltedResults')
     parser.add_argument('-l', '--log-level', help="Prints warnings to console by default",
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument('-d', '--dry-run', default=False, action="store_true",
                         help="Simulates everything, except for actually submitting a job")
-    parser.add_argument("-CD", "--s3_cache_folder", required=True, 
-                        help="Specify S3 path for cached VCF/TSV files")
+
+    required_args = parser.add_argument_group("Required")
+    required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
+    required_args.add_argument("-CD", "--s3_cache_folder", required=True,
+                               help="Specify S3 path for cached meltedResults files")
+
     parser.add_argument("-w", "--working_dir", required=False, default="/scratch",
                         help="Local working directory")
 
