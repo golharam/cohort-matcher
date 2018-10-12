@@ -18,6 +18,42 @@ In order to efficiently, some steps are parallelized to reduce runtime.  Specifi
 1.  Genotype each sample independently of each other
 2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
 
+# How to run #
+
+Pre-req:  Make input bamsheet
+
+Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
+
+P-1234.bamsheet.txt:
+
+| sample  | s3 path to bamfile | reference |
+| ------------- | ------------- | ----- |
+| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
+| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
+
+
+1.  Call genotypeSamples.py
+
+```
+genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
+
+2.  Call compareSamples.py
+
+```
+compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
+
+3.  Call mergeResults.py
+
+```
+mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
+
+## Output ##
+
+mergeResults.py created meltedResults.txt, which contains the sample-to-sample comparisons.
+
 # Genome Reference #
 
 The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg38 / GRCh38). 
@@ -38,39 +74,6 @@ Reference/Target Paths for GRCh37ERCC:
 Reference/Target Paths for hg19:
   - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
   - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
-
-# How to run #
-
-Pre-req:  Make input bamsheet
-
-Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
-
-P-1234.bamsheet.txt:
-
-| sample  | s3 path to bamfile | reference |
-| ------------- | ------------- | ----- |
-| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
-| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
-
-
-
-1.  Call genotypeSamples.py
-
-```
-genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
-
-2.  Call compareSamples.py
-
-```
-compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
-
-3.  Call mergeResults.py
-
-```
-mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
 
 ## Variant Callers ##
 
