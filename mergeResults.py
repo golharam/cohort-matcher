@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 import pandas as pd
-from common import find_bucket_key, listFiles, downloadFile, readSamples, uploadFile
+from common import downloadFile, readSamples, uploadFile, generate_working_dir
 
 __appname__ = 'mergeResults'
 __version__ = "0.2"
@@ -26,19 +26,18 @@ def main(argv):
     # We don't need the last sample in the list so let's remove it
     samples.pop()
 
-    # Get a list of meltedResults files
-    #meltedResultsFiles = listFiles(args.s3_cache_folder, suffix=".meltedResults.txt")
-    #logger.info("Found %s melted result files", len(meltedResultsFiles))
+    working_dir = generate_working_dir(args.working_dir)
+    logger.info("Working in %s", working_dir)
 
     localMeltedResultsFiles = []
     for i, sample in enumerate(samples):
         meltedResultFile = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
-        f = "%s/%s.meltedResults.txt" % (args.working_dir, sample['name'])
+        f = "%s/%s.meltedResults.txt" % (working_dir, sample['name'])
         logger.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
         downloadFile(meltedResultFile, f)
         localMeltedResultsFiles.append(f)
 
-    meltedResultsFile = "%s/meltedResults.txt" % args.working_dir
+    meltedResultsFile = "meltedResults.txt"
     with open(meltedResultsFile, 'w') as outfile:
         header_written = False
         for i, fname in enumerate(localMeltedResultsFiles):
