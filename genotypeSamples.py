@@ -59,8 +59,6 @@ def main(argv):
                                                             "--s3_output_folder_path", args.outputfolder_s3_path]
                                             })
                 logger.debug(response)
-        else:
-            logger.info("%s already genotyped.  Skipping...", sampleName)
 
 def parseArguments(argv):
     ''' Parse Arguments '''
