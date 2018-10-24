@@ -112,3 +112,4 @@ for(b in unique(patient)) {
 }
 
 circos.clear()
+print("Plot saved to Rplots.pdf")
