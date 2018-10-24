@@ -1,3 +1,5 @@
+library(gplots)
+
 # Plot
 # http://www.phaget4.org/R/image_matrix.html
 # https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
