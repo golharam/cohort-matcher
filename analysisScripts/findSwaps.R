@@ -33,6 +33,16 @@ colnames(sample_to_patient) <- c("sample", "patient")
 print( paste("Read", length(unique(sample_to_patient$patient)), "patients and", 
              length(unique(sample_to_patient$sample)), "samples", sep=" ") )
 
+# Plot the comparison results
+# TODO: Since we aren't loading a matrix anymore this code doesn't work.   I need to find a way to
+# salvage plotNumSNPsCompared.  That was a useful plot.
+#source("plots.R")
+#pdf(pdfFile)
+#plotSampleSimilarity(as.matrix(table))
+#plotNumSNPsCompared(snpsCompared)
+#dev.off()
+
+
 # For each sample in the list of samples, get the best match
 matches <- data.frame(from_sample=character(), from_patient=character(),
                       to_sample=character(), to_patient=character(), 
