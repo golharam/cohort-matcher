@@ -29,6 +29,8 @@ def main(argv):
         return -1
 
     vcfFiles = listFiles(args.outputfolder_s3_path, suffix='.vcf')
+
+    genotypingJobs = []
     for sample in samples:
         sampleName = sample['name']
         vcfFile = "%s/%s.vcf" % (args.outputfolder_s3_path, sampleName)
@@ -59,6 +61,20 @@ def main(argv):
                                                             "--s3_output_folder_path", args.outputfolder_s3_path]
                                             })
                 logger.debug(response)
+                jobId = response['jobId']
+                genotypingJobs.append(jobId)
+
+    logger.info("Submitted %s jobs", len(genotypingJobs))
+    completed_jobs = []
+    failed_jobs = []
+    while genotypingJobs:
+        response = batch.describe_jobs(jobs=[genotypingJobs[0]])
+        if response['jobs'][0]['status'] == 'SUCCEEDED':
+            completed_jobs.append(genotypingJob.pop())
+        elif response['jobs'][0]['status'] == 'FAILED':
+            failed_jobs.append(genotypingJob.pop())
+    logger.info("Successed: %s", len(completed_jobs))
+    logger.info("Failed: %s", len(failed_jobs))
 
 def parseArguments(argv):
     ''' Parse Arguments '''
