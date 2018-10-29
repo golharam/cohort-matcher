@@ -1,0 +1,15 @@
+sample1-rna-t	patientA
+sample1-wes-t	patientA
+sample1-wes-n	patientA
+sample2-rna-t	patientB
+sample2-wes-t	patientB
+sample2-wes-n	patientB
+sample3-rna-t	patientC
+sample3-wes-t	patientC
+sample3-wes-n	patientC
+sample4-rna-t	patientD
+sample4-wes-t	patientD
+sample4-wes-n	patientD
+sample5-rna-t	patientE
+sample5-wes-t	patientE
+sample5-wes-n	patientE
