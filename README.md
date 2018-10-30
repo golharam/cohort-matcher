@@ -50,6 +50,15 @@ compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohor
 mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
+4.  Call findSwaps.R
+```
+Rscript analysisScripts/findSwaps.R
+```
+or via Docker
+```
+docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher r-base Rscript /cohort-matcher/analysisScripts/findSwaps.R
+```
+
 ## Output ##
 
 mergeResults.py created meltedResults.txt, which contains the sample-to-sample comparisons.
