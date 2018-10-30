@@ -7,6 +7,11 @@
 ### 2.  Sample to Subject (This should be a master list of all samples mapping to subject)
 ###
 
+### Install required packages to run
+source("http://bioconductor.org/biocLite.R")
+biocLite(c("argparser", "circlize"))
+###
+
 ### Get the command line arguments
 library(argparser, quietly=TRUE)
 p <- arg_parser("findSampleSwaps")
