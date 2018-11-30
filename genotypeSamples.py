@@ -7,6 +7,7 @@ import boto3
 import logging
 import os
 import sys
+import time
 
 from common import find_bucket_key, listFiles, readSamples
 
@@ -68,6 +69,7 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while genotypingJobs:
+        time.sleep(60)
         response = batch.describe_jobs(jobs=[genotypingJobs[0]])
         if response['jobs'][0]['status'] == 'SUCCEEDED':
             completed_jobs.append(genotypingJob.pop())
