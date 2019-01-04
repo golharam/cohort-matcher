@@ -72,9 +72,9 @@ def main(argv):
         time.sleep(60)
         response = batch.describe_jobs(jobs=[genotypingJobs[0]])
         if response['jobs'][0]['status'] == 'SUCCEEDED':
-            completed_jobs.append(genotypingJob.pop())
+            completed_jobs.append(genotypingJobs.pop())
         elif response['jobs'][0]['status'] == 'FAILED':
-            failed_jobs.append(genotypingJob.pop())
+            failed_jobs.append(genotypingJobs.pop())
     logger.info("Successed: %s", len(completed_jobs))
     logger.info("Failed: %s", len(failed_jobs))
 
