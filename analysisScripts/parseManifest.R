@@ -20,7 +20,7 @@ sampleToSubjectFile <- argv$sampleToSubject
 ### Read manifest
 manifest <- read.csv(manifestFile)
 manifest <- manifest[manifest$VRUNIDSUFFIX==1,]
-sample_to_subject <- data.frame(manifest$USUBJID, paste(manifest$VENDORNAME, manifest$VRUNID, sep=""))
+sample_to_subject <- data.frame(paste(manifest$VENDORNAME, manifest$VRUNID, sep=""), manifest$USUBJID)
 
 ### Write sample to subject file
 write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
