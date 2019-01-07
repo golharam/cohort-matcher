@@ -62,6 +62,7 @@ def main(argv):
     if not args.dry_run:
         uploadFile(args.bamsheet, "%s/bamsheet.txt" % args.s3_cache_folder)
 
+    jobs = []
     for sample in samples:
         meltedResults = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
         if meltedResults not in meltedResultsFiles:
@@ -87,7 +88,22 @@ def main(argv):
                                                                                 '-s', sample['name'],
                                                                                 '--s3_cache_folder',
                                                                                 args.s3_cache_folder]})
+                    jobId = response['jobId']
+                    jobs.append(jobId)
                 logger.debug(response)
+
+    logger.info("Submitted %s jobs", len(jobs))
+    completed_jobs = []
+    failed_jobs = []
+    while jobs:
+        time.sleep(60)
+        response = batch.describe_jobs(jobs=[jobs[0]])
+        if response['jobs'][0]['status'] == 'SUCCEEDED':
+            completed_jobs.append(jobs.pop())
+        elif response['jobs'][0]['status'] == 'FAILED':
+            failed_jobs.append(jobs.pop())
+    logger.info("Successed: %s", len(completed_jobs))
+    logger.info("Failed: %s", len(failed_jobs))
 
 def parseArguments(argv):
     ''' Parse arguments '''
