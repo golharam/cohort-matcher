@@ -16,6 +16,22 @@ def downloadFile(srcFile, destFile):
     except botocore.exceptions.ClientError as e:
         logger.warn(e)
 
+def exists(s3path):
+    ''' Return true is s3path is an object, else false '''
+    s3 = boto3.resource('s3')
+    bucket, key = find_bucket_key(s3path)
+    try:
+        s3.Object(bucket, key).load()
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            # The object does not exist.
+            return False
+        else:
+            # Something else has gone wrong.
+            raise
+    # The object does exist.
+    return True
+
 def uploadFile(srcFile, destFile):
     ''' Upload a file to S3 '''
     s3 = boto3.resource('s3')

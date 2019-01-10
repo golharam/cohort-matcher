@@ -9,7 +9,7 @@ import os
 import sys
 import time
 
-from common import find_bucket_key, listFiles, readSamples
+from common import find_bucket_key, listFiles, readSamples, exists
 
 __appname__ = 'genotypeSamples'
 __version__ = "0.2"
@@ -36,6 +36,9 @@ def main(argv):
         sampleName = sample['name']
         vcfFile = "%s/%s.vcf" % (args.outputfolder_s3_path, sampleName)
         if vcfFile not in vcfFiles:
+            if not exists(sample['bam']):
+                logger.error("%s does not exist.", sample['bam'])
+                continue
             logger.info("Genotyping %s", sampleName)
             if sample['reference'] == 'hg19':
                 reference_s3_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2"
@@ -69,8 +72,10 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while genotypingJobs:
+        logger.debug("Sleeping 60 secs")
         time.sleep(60)
         response = batch.describe_jobs(jobs=[genotypingJobs[0]])
+        logger.debug("Job %s state is %s", genotypingJobs[0], response['jobs'][0]['status'])
         if response['jobs'][0]['status'] == 'SUCCEEDED':
             completed_jobs.append(genotypingJobs.pop())
         elif response['jobs'][0]['status'] == 'FAILED':
