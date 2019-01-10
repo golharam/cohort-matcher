@@ -7,6 +7,7 @@
 ### 1.  Sample to Subject file
 
 ### Read arguments
+install.packages(c('argparser'))
 library(argparser, quietly=TRUE)
 p <- arg_parser("cohort-matcher prereq")
 p <- add_argument(p, "--manifest", help="Manifest File", default="BMS-Manifest.csv")
