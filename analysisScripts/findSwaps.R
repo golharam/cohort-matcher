@@ -9,7 +9,7 @@
 
 ### Install required packages to run
 source("http://bioconductor.org/biocLite.R")
-biocLite(c("argparser", "circlize"))
+biocLite(c("argparser", "circlize", "canvasXpress"))
 ###
 
 ### Get the command line arguments
@@ -135,3 +135,22 @@ for(b in unique(subject)) {
 circos.clear()
 print(paste("Output written to", argv$outputFile))
 print("Plot saved to Rplots.pdf")
+
+# CanvasXpress
+library(canvasXpress)
+smpAnnot = as.data.frame(subject)
+smpAnnot$sample = names(subject)
+connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
+cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
+rownames(cxData) = smpAnnot$sample
+canvasXpress(data = t(cxData), 
+             smpAnnot = smpAnnot, 
+             graphType = "Circular",
+             connections = connections,
+             smpOverlays = c("subject", "sample"),
+             ringsOrder = c("subject", "sample"),
+             segregateSamplesBy = list("subject"),
+             showLegend = FALSE,
+             arcSegmentsSeparation = 1,
+             xAxisShow = FALSE)
+
