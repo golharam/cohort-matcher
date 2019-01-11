@@ -21,6 +21,7 @@ import argparse
 import boto3
 import logging
 import os
+import time
 import subprocess
 import sys
 
@@ -121,7 +122,7 @@ def parseArguments(argv):
     job_args = parser.add_argument_group("AWS Batch Job Settings")
     job_args.add_argument('--local', action="store_true", default=False,
                           help="Run locally instead of in AWS Batch")
-    job_args.add_argument('-q', "--job-queue", action="store", default="ngs-spot-job-queue",
+    job_args.add_argument('-q', "--job-queue", action="store", default="ngs-job-queue",
                           help="AWS Batch Job Queue")
     job_args.add_argument('-j', '--job-definition', action="store", default="cohort-matcher:2",
                           help="AWS Batch Job Definition")
