@@ -56,7 +56,7 @@ Rscript analysisScripts/findSwaps.R
 ```
 or via Docker
 ```
-docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher r-base Rscript /cohort-matcher/analysisScripts/findSwaps.R
+docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
 ```
 
 ## Output ##

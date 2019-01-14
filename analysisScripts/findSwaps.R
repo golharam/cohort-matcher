@@ -8,8 +8,8 @@
 ###
 
 ### Install required packages to run
-source("http://bioconductor.org/biocLite.R")
-biocLite(c("argparser", "circlize", "canvasXpress"))
+#source("http://bioconductor.org/biocLite.R")
+#biocLite(c("argparser", "circlize", "canvasXpress"))
 ###
 
 ### Get the command line arguments
