@@ -143,7 +143,7 @@ smpAnnot$sample = names(subject)
 connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
 cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
 rownames(cxData) = smpAnnot$sample
-canvasXpress(data = t(cxData), 
+result <- canvasXpress(data = t(cxData), 
              smpAnnot = smpAnnot, 
              graphType = "Circular",
              connections = connections,
@@ -153,4 +153,4 @@ canvasXpress(data = t(cxData),
              showLegend = FALSE,
              arcSegmentsSeparation = 1,
              xAxisShow = FALSE)
-
+htmlwidgets::saveWidget(result, file = "canvasXpress.html")
