@@ -39,7 +39,6 @@ colnames(sample_to_subject) <- c("sample", "subject")
 print( paste("Read", length(unique(sample_to_subject$subject)), "subjects and",
              length(unique(sample_to_subject$sample)), "samples", sep=" ") )
 
-# TODO: Verify the list of samples in meltedResults matches the samples in sampleToSubject
 samples <- unique(c(cm$Sample1, cm$Sample2))
 if (setequal(samples, unique(sample_to_subject$sample)) == FALSE) {
   logerror("Samples in meltedResults and samplesToSubject map don't match")
