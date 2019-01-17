@@ -8,8 +8,10 @@
 ###
 
 ### Install required packages to run
-#source("http://bioconductor.org/biocLite.R")
-#biocLite(c("argparser", "circlize", "canvasXpress"))
+source("http://bioconductor.org/biocLite.R")
+biocLite(c("argparser", "circlize", "canvasXpress", "logging"))
+library(logging)
+basicConfig()
 ###
 
 ### Get the command line arguments
@@ -23,9 +25,6 @@ p <- add_argument(p, "--outputFile", help="Output file to list swaps", default="
 argv <- parse_args(p)
 ###
 
-# Redirect output to file
-sink(argv$outputFile)
-
 # Read cohort matcher results
 print(paste("Reading", argv$meltedResults, sep=" "))
 cm <- read.table(argv$meltedResults, header=TRUE, sep="\t", stringsAsFactors=FALSE)
@@ -37,10 +36,13 @@ sample_to_subject <- read.table(argv$sampleToSubject, header=FALSE, sep="\t", st
                                 na.strings = "")
 colnames(sample_to_subject) <- c("sample", "subject")
 
-# TODO: Verify the list of samples in meltedResults matches the samples in sampleToSubject
-
 print( paste("Read", length(unique(sample_to_subject$subject)), "subjects and",
              length(unique(sample_to_subject$sample)), "samples", sep=" ") )
+
+if (setequal(samples, unique(sample_to_subject$sample)) == FALSE) {
+  logerror("Samples in meltedResults and samplesToSubject map don't match")
+  return
+}
 
 # Plot the comparison results
 # TODO: Since we aren't loading a matrix anymore this code doesn't work.   I need to find a way to
