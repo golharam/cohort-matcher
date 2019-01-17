@@ -9,7 +9,8 @@
 
 ### Install required packages to run
 source("http://bioconductor.org/biocLite.R")
-biocLite(c("argparser", "circlize", "canvasXpress", "logging"))
+biocLite(c("argparser", "circlize", "logging"))
+#biocLite("canvasXpress")
 library(logging)
 basicConfig()
 ###
@@ -54,41 +55,40 @@ rm(samples)
 #plotNumSNPsCompared(snpsCompared)
 #dev.off()
 
-
+print("Matching samples...")
+fileConn <- file(argv$outputFile)
 # For each sample in the list of samples, get the best match
 matches <- data.frame(from_sample=character(), from_subject=character(),
                       to_sample=character(), to_subject=character(),
                       stringsAsFactors = FALSE)
 for (sample in sample_to_subject$sample) {
-  print(sample)
+  writeLines(sample)
   sample_matches <- cm[ which((cm$Sample1==sample | cm$Sample2==sample) & cm$Judgement=="SAME"), ]
   # if sample_matches is Empty, then sample doesn't match to another subject
   # for all sample_matches, make sure the sample matches to the same subject
   if (nrow(sample_matches) > 0) {
-    print(paste("     Found", nrow(sample_matches), "match(s)", sep=" "))
+    writeLines(paste("     Found", nrow(sample_matches), "match(s)", sep=" "))
     for (row_index in 1:nrow(sample_matches)) {
       if (sample_matches[row_index, "Sample1"] == sample) {
         matched_sample <- sample_matches[row_index, "Sample2"]
       } else {
         matched_sample <- sample_matches[row_index, "Sample1"]
       }
-      print(paste("     Matched sample is", matched_sample, sep=" "))
+      writeLines(paste("     Matched sample is", matched_sample, sep=" "))
       # sample is the sample of interest
       # matched_sample is the matched sample
       # Now, make sure they are from the same subject
       subject1 <- sample_to_subject[sample_to_subject$sample==sample, 'subject']
       subject2 <- sample_to_subject[sample_to_subject$sample==matched_sample, 'subject']
-      print(paste("     ", subject1, "-", subject2, sep=" "))
       if (subject1 != subject2) {
-        print(paste("     Sample ", sample, " (USUBJID: ", subject1, ") matches to ", matched_sample,
+        writeLines(paste("     Sample ", sample, " (USUBJID: ", subject1, ") matches to ", matched_sample,
                     " (USUBJID: ", subject2, ")", sep=""))
       }
       matches <- rbind(matches, data.frame(from_sample=sample, from_subject=subject1, to_sample=matched_sample, to_subject=subject2))
     }
-    
   }
 }
-sink()
+close(fileConn)
 
 # Fix the data.frame to remove levels
 matches <- data.frame(lapply(matches, as.character), stringsAsFactors = FALSE)
@@ -140,20 +140,20 @@ print(paste("Output written to", argv$outputFile))
 print("Plot saved to Rplots.pdf")
 
 # CanvasXpress
-library(canvasXpress)
-smpAnnot = as.data.frame(subject)
-smpAnnot$sample = names(subject)
-connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
-cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
-rownames(cxData) = smpAnnot$sample
-result <- canvasXpress(data = t(cxData), 
-             smpAnnot = smpAnnot, 
-             graphType = "Circular",
-             connections = connections,
-             smpOverlays = c("subject", "sample"),
-             ringsOrder = c("subject", "sample"),
-             segregateSamplesBy = list("subject"),
-             showLegend = FALSE,
-             arcSegmentsSeparation = 1,
-             xAxisShow = FALSE)
-htmlwidgets::saveWidget(result, file = "canvasXpress.html")
+#library(canvasXpress)
+#smpAnnot = as.data.frame(subject)
+#smpAnnot$sample = names(subject)
+#connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
+#cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
+#rownames(cxData) = smpAnnot$sample
+#result <- canvasXpress(data = t(cxData), 
+#             smpAnnot = smpAnnot, 
+#             graphType = "Circular",
+#             connections = connections,
+#             smpOverlays = c("subject", "sample"),
+#             ringsOrder = c("subject", "sample"),
+#             segregateSamplesBy = list("subject"),
+#             showLegend = FALSE,
+#             arcSegmentsSeparation = 1,
+#             xAxisShow = FALSE)
+#htmlwidgets::saveWidget(result, file = "canvasXpress.html")
