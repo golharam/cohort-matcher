@@ -56,39 +56,39 @@ rm(samples)
 #dev.off()
 
 print("Matching samples...")
-fileConn <- file(argv$outputFile)
+sink(argv$outputFile)
 # For each sample in the list of samples, get the best match
 matches <- data.frame(from_sample=character(), from_subject=character(),
                       to_sample=character(), to_subject=character(),
                       stringsAsFactors = FALSE)
 for (sample in sample_to_subject$sample) {
-  writeLines(sample)
+  cat(sample, sep="\n")
   sample_matches <- cm[ which((cm$Sample1==sample | cm$Sample2==sample) & cm$Judgement=="SAME"), ]
   # if sample_matches is Empty, then sample doesn't match to another subject
   # for all sample_matches, make sure the sample matches to the same subject
   if (nrow(sample_matches) > 0) {
-    writeLines(paste("     Found", nrow(sample_matches), "match(s)", sep=" "))
+    cat(paste("     Found", nrow(sample_matches), "match(s)", sep=" "), sep="\n")
     for (row_index in 1:nrow(sample_matches)) {
       if (sample_matches[row_index, "Sample1"] == sample) {
         matched_sample <- sample_matches[row_index, "Sample2"]
       } else {
         matched_sample <- sample_matches[row_index, "Sample1"]
       }
-      writeLines(paste("     Matched sample is", matched_sample, sep=" "))
+      cat(paste("     Matched sample is", matched_sample, sep=" "), sep="\n")
       # sample is the sample of interest
       # matched_sample is the matched sample
       # Now, make sure they are from the same subject
       subject1 <- sample_to_subject[sample_to_subject$sample==sample, 'subject']
       subject2 <- sample_to_subject[sample_to_subject$sample==matched_sample, 'subject']
       if (subject1 != subject2) {
-        writeLines(paste("     Sample ", sample, " (USUBJID: ", subject1, ") matches to ", matched_sample,
-                    " (USUBJID: ", subject2, ")", sep=""))
+        cat(paste("     Sample ", sample, " (USUBJID: ", subject1, ") matches to ", matched_sample,
+                    " (USUBJID: ", subject2, ")", sep=""), sep="\n")
       }
       matches <- rbind(matches, data.frame(from_sample=sample, from_subject=subject1, to_sample=matched_sample, to_subject=subject2))
     }
   }
 }
-close(fileConn)
+sink()
 
 # Fix the data.frame to remove levels
 matches <- data.frame(lapply(matches, as.character), stringsAsFactors = FALSE)
