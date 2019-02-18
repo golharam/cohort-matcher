@@ -72,10 +72,11 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while genotypingJobs:
-        logger.debug("Sleeping 60 secs")
+        logger.info("Sleeping 60 secs")
         time.sleep(60)
+        logger.info("Checking job %s", genotypingJobs[0])
         response = batch.describe_jobs(jobs=[genotypingJobs[0]])
-        logger.debug("Job %s state is %s", genotypingJobs[0], response['jobs'][0]['status'])
+        logger.info("Job %s state is %s", genotypingJobs[0], response['jobs'][0]['status'])
         if response['jobs'][0]['status'] == 'SUCCEEDED':
             completed_jobs.append(genotypingJobs.pop())
         elif response['jobs'][0]['status'] == 'FAILED':
