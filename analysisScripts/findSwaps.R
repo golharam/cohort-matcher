@@ -33,7 +33,6 @@ rm(p)
 # Read cohort matcher results
 loginfo(paste("Reading", argv$meltedResults, sep=" "))
 cm <- read.table(argv$meltedResults, header=TRUE, sep="\t", stringsAsFactors=FALSE)
-#cm.same <- cm[ which(cm$Judgement=="SAME"), ]
 
 # Read sample to Subject map
 loginfo(paste("Reading", argv$sampleToSubject, sep=" "))

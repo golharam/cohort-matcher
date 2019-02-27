@@ -97,8 +97,11 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while jobs:
+        logger.info("Sleeping 60 secs")
         time.sleep(60)
+        logger.info("Checking job %s", jobs[0])
         response = batch.describe_jobs(jobs=[jobs[0]])
+        logger.info("Job %s state is %s", jobs[0], response['jobs'][0]['status'])
         if response['jobs'][0]['status'] == 'SUCCEEDED':
             completed_jobs.append(jobs.pop())
         elif response['jobs'][0]['status'] == 'FAILED':
