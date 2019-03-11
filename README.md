@@ -4,40 +4,85 @@
 
 # cohort-matcher #
 
-A simple tool for determining whether two cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is built on BAM-matcher.
+A workflow for comparing multiple cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
 
-BAM-matcher is most useful at comparing whole-genome-sequencing (WGS), whole-exome-sequencing (WES) and RNA-sequencing (RNA-seq) human data, but can also be customised to compare panel data or non-human data.
+# Algorithm #
 
-To compare two cohorts, run:
+The basic workflow consists of:
+1. Genotype all the samples to be compared. (genotypeSamples.py)
+2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
+3. Merge the results of the sample comparisons (mergeResults.py)
+4. Generate plots based on results and known patient-to-sample assocation.
+
+In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
+1.  Genotype each sample independently of each other
+2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+
+# How to run #
+
+Pre-req:  Make input bamsheet
+
+Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
+
+P-1234.bamsheet.txt:
+
+| sample  | s3 path to bamfile | reference |
+| ------------- | ------------- | ----- |
+| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
+| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
+
+
+1.  Call genotypeSamples.py
+
 ```
-/ngs/apps/Python-2.7.8/bin/python /ngs/apps/cohort-matcher/cohort_matcher.py \
-        --set1 cohort1.txt --set2 cohort2.txt \
-        --cache-dir `pwd`/cache --scratch-dir /scratch \
-        --caller freebayes \
-        --vcf /ngs/apps/cohort-matcher/hg19.exome.highAF.7550.vcf \
-        --reference /ngs/reference/hg19/hg19.fa \
-        --freebayes-path /ngs/apps/freebayes/bin/freebayes \
-        --aws /usr/bin/aws \
-        --Rscript /ngs/apps/R-3.2.2/bin/Rscript \
-        --samtools /ngs/apps/samtools-0.1.19/samtools \
-        --output-dir output
+genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-which will output a series of files indicating sample similarity include:
-cohort-matcher-results.txt
-cohort-matcher-results.pdf
-topmatches.txt
-meltedResults.txt
+2.  Call compareSamples.py
 
-# Docker #
+```
+compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
 
-Cohort matcher is available in Docker via AWS Batch.   Use the following arguments to run the AWS Batch cohort-matcher job: 
+3.  Call mergeResults.py
 
---set1_s3_path
---set2_s3_path
---set1_reference [hg19/GRCh37]
---set2_reference [hg19/GRCh37]
---s3_output_folder_path
+```
+mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+```
+
+4.  Call findSwaps.R
+```
+Rscript analysisScripts/findSwaps.R
+```
+or via Docker
+```
+docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
+```
+
+## Output ##
+
+mergeResults.py created meltedResults.txt, which contains the sample-to-sample comparisons.
+
+# Genome Reference #
+
+The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg38 / GRCh38). 
+Samples must be mapped against either: 
+
+1) hg19 or GRCh37
+
+OR
+
+2) hg38 or GRCh38
+
+Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
+
+Reference/Target Paths for GRCh37ERCC:
+  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2
+  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
+  
+Reference/Target Paths for hg19:
+  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
+  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
 
 ## Variant Callers ##
 
@@ -53,6 +98,7 @@ Note: Cohort-matcher only supports Freebayes at this time.
 
 ```
 git clone https://github.com/golharam/cohort-matcher
+pip install -r cohort-matcher/requirements.txt
 ```
 
 The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
@@ -63,21 +109,14 @@ The repository also includes several BAM files which can be used for testing (un
 
 Cohort-matcher adds unit tests to test the python code.
 
-# LICENCE #
+# LICENSE #
 
 The code is released under the Creative Commons by Attribution licence (http://creativecommons.org/licenses/by/4.0/). You are free to use and modify it for any purpose (including commercial), so long as you include appropriate attribution. 
 
 # Citation #
 
-*BAM-matcher: a tool for rapid NGS sample matching*
-
-Paul P.S. Wang; Wendy T. Parker; Susan Branford; Andreas W. Schreiber
-Bioinformatics 2016
-
-[doi: 10.1093/bioinformatics/btw239](http://bioinformatics.oxfordjournals.org/content/early/2016/05/01/bioinformatics.btw239.abstract)
-
+*cohort-matcher* - in prep
 
 # Contact #
 
-Ryan Golhar ryan dot golhar at bms dot com
-
+Ryan Golhar (ryan.golhar@bms.com)

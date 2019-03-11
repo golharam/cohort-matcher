@@ -1,0 +1,11 @@
+Sample1	Sample2	n_S1	n_S2	SNPs_Compared	Fraction_Match	Judgement
+sample1-rna-t	sample1-wes-t	100	100	90	0.9	SAME
+sample1-rna-t	sample5-rna-t	100	100	100	1.0	SAME
+sample1-wes-t	sample1-wes-n	100	100	90	0.9	SAME
+sample2-rna-t	sample2-wes-n	100	100	90	0.9	SAME
+sample2-wes-t	sample2-wes-n	100	100	90	0.9	SAME
+sample3-rna-t	sample3-wes-t	100	100	90	0.9	SAME
+sample3-wes-t	sample3-wes-n	100	100	90	0.9	SAME
+sample4-rna-t	sample4-wes-t	100	100	90	0.9	SAME
+sample4-wes-t	sample4-wes-n	100	100	90	0.9	SAME
+sample5-wes-t	sample5-wes-n	100	100	90	0.9	SAME

@@ -3,9 +3,11 @@ python_env
 .pydevproject
 
 *.pyc
-python_env/
+cohort-matcher-env
 
 .coverage
 cover/
 pylint.out
 coverage.xml
+
+.DS_Store

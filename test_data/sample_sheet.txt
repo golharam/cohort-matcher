@@ -1,0 +1,6 @@
+EA595427	s3://bmsrd-ngs-results/P-20170209-0001/bam/EA595427.GRCh37ERCC-ensembl75.decontaminated.genome.bam	GRCh37ERCC
+EA595432	s3://bmsrd-ngs-results/P-20170209-0001/bam/EA595432.GRCh37ERCC-ensembl75.decontaminated.genome.bam	GRCh37ERCC
+EA595440	s3://bmsrd-ngs-results/P-20170209-0001/bam/EA595440.GRCh37ERCC-ensembl75.decontaminated.genome.bam	GRCh37ERCC
+EA698313	s3://bmsrd-ngs-results/P-20171003-0002/hg19/DNASeq//EA698313/EA698313.sorted.dedup.realigned.recal.bam	hg19
+EA699580	s3://bmsrd-ngs-results/P-20171003-0002/hg19/DNASeq//EA699580/EA699580.sorted.dedup.realigned.recal.bam	hg19
+EA699787	s3://bmsrd-ngs-results/P-20171003-0002/hg19/DNASeq//EA699787/EA699787.sorted.dedup.realigned.recal.bam	hg19
