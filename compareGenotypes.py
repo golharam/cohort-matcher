@@ -234,6 +234,7 @@ def main(argv):
     for i, s in enumerate(samples):
         if s['name'] == sampleName:
             sample_index = i
+            break
     if sample_index == -1:
         logger.error("Unable to locate sample in bamsheet")
         return -1
@@ -282,19 +283,20 @@ def main(argv):
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
             results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
-                        results['short_judgement'])
+            logger.info("\t{0:.4f} / {1} - {2} ({3})".format(results['frac_common'],
+                                                                  results['total_compared'],
+                                                                  results['short_judgement'],
+                                                                  results['gt_freq']))
+            #logger.info("\t%.4f / %d - %s (%f)", results['frac_common'], results['total_compared'],
+            #            results['short_judgement'], results['gt_freq'])
 
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
-            gtf = '%.4f' % results['gt_freq']
+            gtf = '{}'.format(results['gt_freq'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
             fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, j]) + "\n")
-            #fout.write(sampleName + "\t" + sample['name'] + "\t" +
-            #           n1 + "\t" + n2 + "\t" +
-            #           tc + "\t" + fm + "\t" + gtf + "\t" + j + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
@@ -377,6 +379,10 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     fout.write("%s\n" % "\t".join(fields_to_extract))
     try:
       for var in vcf_in:
+        if var.is_indel:
+            continue
+        if var.is_snp is False and var.is_monomorphic is False:
+            pass
         logger.debug("%s - %s:%s", invcf, var.CHROM, var.POS)
         chrom_ = var.CHROM.replace("chr", "")
         pos_ = str(var.POS)
