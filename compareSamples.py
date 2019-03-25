@@ -47,6 +47,9 @@ def main(argv):
     logger.info("%s v%s" % (__appname__, __version__))
     logger.info(args)
 
+    logger.warn("The while loop to watch for completed jobs does not work.  It get stuck on SUCCEEDED, hence this is a good time to debug it!")
+    return
+
     batch = boto3.client('batch')
 
     samples = readSamples(args.bamsheet)
@@ -97,6 +100,7 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while jobs:
+        logger.info("Waiting on %s jobs", len(jobs))
         logger.info("Sleeping 60 secs")
         time.sleep(60)
         logger.info("Checking job %s", jobs[0])
