@@ -5,6 +5,7 @@ Script to compare genotypes of samples
 from __future__ import division
 import argparse
 from fisher import pvalue
+from math import log
 import logging
 import os
 import vcf
