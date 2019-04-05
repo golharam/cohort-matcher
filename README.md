@@ -10,13 +10,14 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 
 The basic workflow consists of:
 1. Genotype all the samples to be compared. (genotypeSamples.py)
-2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
-3. Merge the results of the sample comparisons (mergeResults.py)
-4. Generate plots based on results and known patient-to-sample assocation.
+2. Collect genotype frequency information from VCF files (constructGenotypeFrequencyTable)
+3. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
+4. Merge the results of the sample comparisons (mergeResults.py)
+5. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
 1.  Genotype each sample independently of each other
-2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+3.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
 
 # How to run #
 
