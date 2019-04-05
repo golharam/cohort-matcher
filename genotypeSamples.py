@@ -73,7 +73,7 @@ def main(argv):
     failed_jobs = []
     for counter, jobid in enumerate(genotypingJobs):
         status = ''
-        while status != 'SUCCEEDED' or status != 'FAILED':
+        while status != 'SUCCEEDED' and status != 'FAILED':
             logger.info("Sleeping 60 secs")
             time.sleep(60)
             logger.info("[%d/%d] Checking job %s", counter, len(genotypingJobs),  jobid)
