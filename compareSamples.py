@@ -97,6 +97,7 @@ def main(argv):
     completed_jobs = []
     failed_jobs = []
     while jobs:
+        logger.info("Waiting on %s jobs", len(jobs))
         logger.info("Sleeping 60 secs")
         time.sleep(60)
         logger.info("Checking job %s", jobs[0])

@@ -2,8 +2,10 @@
 '''
 Script to compare genotypes of samples
 '''
+from __future__ import division
 import argparse
 from fisher import pvalue
+from math import log
 import logging
 import os
 import vcf
@@ -34,7 +36,24 @@ def is_subset(hom_gt, het_gt):
     gt_hom = hom_gt.split("/")[0]
     return gt_hom in het_gt
 
-def compareGenotypes(var_list, var_list2, intersection):
+def genotypeFrequency(gt, gt_frequencies):
+    '''
+    Calculate the frequency of genotype
+
+    :param gt: Genotype of interest e.g. 'A/G'
+    :param gt_frequencies: {'A/A': '0', ... }
+    :return: Float, frequency of genotype
+    '''
+    sum = 0
+    for _ in gt_frequencies:
+        sum += gt_frequencies[_]
+    a1, a2 = gt.split('/')
+    if a1 > a2:
+        _ = "%s/%s" % (a2, a1)
+        return gt_frequencies[_]/sum
+    return gt_frequencies[gt]/sum
+
+def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
     ''' Compare genotypes of two samples '''
     ct_common = 0
     comm_hom_ct = 0
@@ -46,6 +65,8 @@ def compareGenotypes(var_list, var_list2, intersection):
     diff_hom_het_ct = 0
     diff_2sub1_ct = 0
     diff_het_hom_ct = 0
+    gt_log_prob = 0
+
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
         #if alternate_chroms is not None:
@@ -62,6 +83,12 @@ def compareGenotypes(var_list, var_list2, intersection):
                 comm_hom_ct += 1
             else:
                 comm_het_ct += 1
+
+            # P-Value calc
+            bits = pos_.split('\t')
+            pos_counts = gtfreqtable[bits[0]][bits[1]]
+            gt1_prob = genotypeFrequency(gt1, pos_counts)
+            gt_log_prob += log(gt1_prob)
         else:
             ct_diff += 1
             # both are hom and different
@@ -124,6 +151,7 @@ def compareGenotypes(var_list, var_list2, intersection):
     results['diff_1sub2_ct'] = diff_1sub2_ct
     results['diff_2sub1_ct'] = diff_2sub1_ct
     results['allele_subset'] = allele_subset
+    results['gt_log_prob'] = gt_log_prob
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
@@ -199,6 +227,7 @@ def main(argv):
     logger.info("Working in %s", working_dir)
 
     sampleName = args.sample
+
     # Download and read the bamsheet from the s3 cache directory
     downloadFile("%s/bamsheet.txt" % args.s3_cache_folder, "%s/bamsheet.txt" % working_dir)
     samples = readSamples("%s/bamsheet.txt" % working_dir)
@@ -206,6 +235,7 @@ def main(argv):
     for i, s in enumerate(samples):
         if s['name'] == sampleName:
             sample_index = i
+            break
     if sample_index == -1:
         logger.error("Unable to locate sample in bamsheet")
         return -1
@@ -228,9 +258,15 @@ def main(argv):
         logger.error("Failed to download %s", s3_vcfFile)
         return -1
 
+    # Get genotype frequency table
+    s3_gtfreqtable = "%s/genotypeFrequencyTable.txt" % args.s3_cache_folder
+    gtfreqtable = "%s/genotypeFrequencyTable.txt" % working_dir
+    downloadFile(s3_gtfreqtable, gtfreqtable)
+    gtfreqtable = readGTFreqTable(gtfreqtable)
+
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -247,18 +283,18 @@ def main(argv):
 
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
-            results = compareGenotypes(var_list, var_list2, intersection)
-            logger.info("\t%.4f / %d - %s", results['frac_common'], results['total_compared'],
-                        results['short_judgement'])
-
+            results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
+            logger.info("\t{0:.4f} / {1} - {2} ({3})".format(results['frac_common'],
+                                                                  results['total_compared'],
+                                                                  results['short_judgement'],
+                                                                  results['gt_log_prob']))
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
+            gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write(sampleName + "\t" + sample['name'] + "\t" +
-                       n1 + "\t" + n2 + "\t" +
-                       tc + "\t" + fm + "\t" + j + "\n")
+            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
@@ -268,6 +304,30 @@ def main(argv):
     delete_working_dir(working_dir)
     logger.info('Completed')
 
+def readGTFreqTable(gtfreqtable):
+    ''' Read the genotype frequency table '''
+    gt_list = dict()
+    with open(gtfreqtable, "r") as fin:
+        for line in fin:
+            if line.startswith("CHR"):
+                continue
+            chr, pos, aa, ac, ag, at, cc, cg, ct, gg, gt, tt = line.strip("\n").split("\t")
+            if chr not in gt_list:
+                gt_list[chr] = dict()
+            if pos not in gt_list[chr]:
+                gt_list[chr][pos] = dict()
+            gt_list[chr][pos]['A/A'] = int(aa)
+            gt_list[chr][pos]['A/C'] = int(ac)
+            gt_list[chr][pos]['A/G'] = int(ag)
+            gt_list[chr][pos]['A/T'] = int(at)
+            gt_list[chr][pos]['C/C'] = int(cc)
+            gt_list[chr][pos]['C/G'] = int(cg)
+            gt_list[chr][pos]['C/T'] = int(ct)
+            gt_list[chr][pos]['G/G'] = int(gg)
+            gt_list[chr][pos]['G/T'] = int(gt)
+            gt_list[chr][pos]['T/T'] = int(tt)
+    return gt_list
+ 
 def parseArguments(argv):
     ''' Parse arguments '''
     parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
@@ -317,6 +377,10 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     fout.write("%s\n" % "\t".join(fields_to_extract))
     try:
       for var in vcf_in:
+        if var.is_indel:
+            continue
+        if var.is_snp is False and var.is_monomorphic is False:
+            pass
         logger.debug("%s - %s:%s", invcf, var.CHROM, var.POS)
         chrom_ = var.CHROM.replace("chr", "")
         pos_ = str(var.POS)
