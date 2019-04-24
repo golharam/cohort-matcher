@@ -39,6 +39,10 @@ write.table(rna_bamsheet, file="rna_bamsheet.txt", sep="\t", row.names=FALSE, co
 ### Create the WES bamsheet
 # TODO: Sujaya, please fill in code here
 #wes_bamsheet <- data.frame(sample=..., bamfile=..., reference="hg19")
+wes_bamsheet <- read.table("wes_bamsheet.txt", header=FALSE, sep="\t")
+colnames(wes_bamsheet) <- colnames(rna_bamsheet)
 
-# TODO: Merge rna_bamsheet + wes_bamsheet and write out master bamsheet
-paste("TODO: Merge rna_bamsheet + wes_bamsheet")
+# Merge rna_bamsheet + wes_bamsheet and write out master bamsheet
+bamsheet <- rbind(wes_bamsheet, rna_bamsheet)
+write.table(bamsheet, file="bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+
