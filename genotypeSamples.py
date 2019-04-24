@@ -74,8 +74,6 @@ def main(argv):
     for counter, jobid in enumerate(genotypingJobs):
         status = ''
         while status != 'SUCCEEDED' and status != 'FAILED':
-            logger.info("Sleeping 60 secs")
-            time.sleep(60)
             logger.info("[%d/%d] Checking job %s", counter, len(genotypingJobs),  jobid)
             response = batch.describe_jobs(jobs=[jobid])
             status = response['jobs'][0]['status']
@@ -84,17 +82,9 @@ def main(argv):
                 completed_jobs.append(jobid)
             elif status == 'FAILED':
                 failed_jobs.append(jobid)
-
-    #while genotypingJobs:
-    #    logger.info("Sleeping 60 secs")
-    #    time.sleep(60)
-    #    logger.info("Checking job %s", genotypingJobs[0])
-    #    response = batch.describe_jobs(jobs=[genotypingJobs[0]])
-    #    logger.info("Job %s state is %s", genotypingJobs[0], response['jobs'][0]['status'])
-    #    if response['jobs'][0]['status'] == 'SUCCEEDED':
-    #        completed_jobs.append(genotypingJobs.pop())
-    #    elif response['jobs'][0]['status'] == 'FAILED':
-    #        failed_jobs.append(genotypingJobs.pop())
+            else:
+                logger.info("Sleeping 60 secs")
+                time.sleep(60)
 
     logger.info("Successed: %s", len(completed_jobs))
     logger.info("Failed: %s", len(failed_jobs))
