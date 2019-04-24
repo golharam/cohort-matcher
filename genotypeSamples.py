@@ -74,7 +74,7 @@ def main(argv):
     for counter, jobid in enumerate(genotypingJobs):
         status = ''
         while status != 'SUCCEEDED' and status != 'FAILED':
-            logger.info("[%d/%d] Checking job %s", counter, len(genotypingJobs),  jobid)
+            logger.info("[%d/%d] Checking job %s", counter+1, len(genotypingJobs),  jobid)
             response = batch.describe_jobs(jobs=[jobid])
             status = response['jobs'][0]['status']
             logger.info("Job %s state is %s", jobid, status)
