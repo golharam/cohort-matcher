@@ -39,19 +39,38 @@ P-1234.bamsheet.txt:
 genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-2.  Call compareSamples.py
+2.  Call constructGenotypeFrequencyTable
+
+```
+# Download BED file of SNPs
+aws s3 cp s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed .
+
+# Download VCF files
+mkdir vcfs
+for vcf in `aws s3 ls s3://bmsrd-ngs-results/P-1234/cohort-matcher/ | grep vcf | awk '{print "s3://bmsrd-ngs-results/P-1234/cohort-matcher/"$4}'`; do
+    aws s3 cp $vcf vcfs/
+done
+# Make VCF file list
+ls vcfs/* > vcffiles.txt
+
+# Construct genotype frequency table
+source ~/NGS/cohort-matcher/env/bin/activate
+~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt
+```
+
+3.  Call compareSamples.py
 
 ```
 compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-3.  Call mergeResults.py
+4.  Call mergeResults.py
 
 ```
 mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-4.  Call findSwaps.R
+5.  Call findSwaps.R
 ```
 Rscript analysisScripts/findSwaps.R
 ```
