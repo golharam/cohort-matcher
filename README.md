@@ -56,7 +56,7 @@ ls vcfs/* > vcffiles.txt
 
 # Construct genotype frequency table
 source ~/NGS/cohort-matcher/env/bin/activate
-~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt
+~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt > genotypeFrequencyTable.txt
 ```
 
 3.  Call compareSamples.py
