@@ -48,7 +48,7 @@ aws s3 cp s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed .
 # Download VCF files
 PROJECTID=P-12345678-1234
 mkdir vcfs
-for vcf in `aws s3 ls s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ | grep vcf`; do
+for vcf in `aws s3 ls s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ | grep vcf | awk '{print $4}'`; do
     aws s3 cp s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/$vcf vcfs/
 done
 # Make VCF file list
