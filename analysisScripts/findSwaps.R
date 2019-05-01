@@ -9,7 +9,7 @@
 
 ### Install required packages to run
 source("http://bioconductor.org/biocLite.R")
-biocLite(c("argparser", "circlize", "logging"))
+biocLite(c("argparser", "logging"))
 library(logging)
 basicConfig()
 ###
@@ -17,6 +17,9 @@ basicConfig()
 ### Get the command line arguments
 library(argparser, quietly=TRUE)
 p <- arg_parser("findSampleSwaps")
+
+p <- add_argument(p, "--installPackages", help="Install packages (Default: False)", flag=TRUE)
+
 p <- add_argument(p, "--meltedResults", help="Cohort-matcher melted results", default="meltedResults.txt")
 p <- add_argument(p, "--sampleToSubject", help="Sample to subject mapping", default="sampleToSubject.txt")
 p <- add_argument(p, "--outputFile", help="Output file to list swaps", default="swaps.txt")
@@ -29,6 +32,14 @@ p <- add_argument(p, "--canvasXpress", help="Make canvasXpress plot (Default: Fa
 argv <- parse_args(p)
 rm(p)
 ###
+
+if (argv$installPackages) {
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("circlize")
+  if (argv$canvasXpress) {
+    devtools::install_github('neuhausi/canvasXpress')
+  }
+}
 
 # Read cohort matcher results
 loginfo(paste("Reading", argv$meltedResults, sep=" "))
@@ -169,7 +180,6 @@ dev.off()
 
 # CanvasXpress
 if (argv$canvasXpress) {
-  devtools::install_github('neuhausi/canvasXpress')
   library(canvasXpress)
   smpAnnot = as.data.frame(subject)
   smpAnnot$sample = names(subject)
