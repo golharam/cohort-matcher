@@ -10,7 +10,6 @@
 ### Install required packages to run
 source("http://bioconductor.org/biocLite.R")
 biocLite(c("argparser", "circlize", "logging"))
-#biocLite("canvasXpress")
 library(logging)
 basicConfig()
 ###
@@ -25,6 +24,7 @@ p <- add_argument(p, "--outputFile", help="Output file to list swaps", default="
 p <- add_argument(p, "--circosFile", help="Output file for circos plot", default="circos.pdf")
 p <- add_argument(p, "--showSampleLabels", help="Show sample labels in circos plot (Default: False)", flag=TRUE)
 p <- add_argument(p, "--showSubjectLabels", help="Show subject labels in circos plot (Default: False)", flag=TRUE)
+p <- add_argument(p, "--canvasXpress", help="Make canvasXpress plot (Default: False)", flag=TRUE)
 
 argv <- parse_args(p)
 rm(p)
@@ -168,20 +168,23 @@ circos.clear()
 dev.off()
 
 # CanvasXpress
-#library(canvasXpress)
-#smpAnnot = as.data.frame(subject)
-#smpAnnot$sample = names(subject)
-#connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
-#cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
-#rownames(cxData) = smpAnnot$sample
-#result <- canvasXpress(data = t(cxData), 
-#             smpAnnot = smpAnnot, 
-#             graphType = "Circular",
-#             connections = connections,
-#             smpOverlays = c("subject", "sample"),
-#             ringsOrder = c("subject", "sample"),
-#             segregateSamplesBy = list("subject"),
-#             showLegend = FALSE,
-#             arcSegmentsSeparation = 1,
-#             xAxisShow = FALSE)
-#htmlwidgets::saveWidget(result, file = "canvasXpress.html")
+if (argv$canvasXpress) {
+  devtools::install_github('neuhausi/canvasXpress')
+  library(canvasXpress)
+  smpAnnot = as.data.frame(subject)
+  smpAnnot$sample = names(subject)
+  connections = apply(as.matrix(cbind(matches[,1], matches[,3])), 1, as.list)
+  cxData = data.frame(var1=rep.int(1, length(smpAnnot$sample)))
+  rownames(cxData) = smpAnnot$sample
+  result <- canvasXpress(data = t(cxData), 
+             smpAnnot = smpAnnot, 
+             graphType = "Circular",
+             connections = connections,
+             smpOverlays = c("subject", "sample"),
+             ringsOrder = c("subject", "sample"),
+             segregateSamplesBy = list("subject"),
+             showLegend = FALSE,
+             arcSegmentsSeparation = 1,
+             xAxisShow = FALSE)
+  htmlwidgets::saveWidget(result, file = "canvasXpress.html")
+}
