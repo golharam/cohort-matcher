@@ -46,16 +46,18 @@ genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohor
 aws s3 cp s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed .
 
 # Download VCF files
+PROJECTID=P-12345678-1234
 mkdir vcfs
-for vcf in `aws s3 ls s3://bmsrd-ngs-results/P-1234/cohort-matcher/ | grep vcf | awk '{print "s3://bmsrd-ngs-results/P-1234/cohort-matcher/"$4}'`; do
-    aws s3 cp $vcf vcfs/
+for vcf in `aws s3 ls s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ | grep vcf | awk '{print $4}'`; do
+    aws s3 cp s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/$vcf vcfs/
 done
 # Make VCF file list
 ls vcfs/* > vcffiles.txt
 
 # Construct genotype frequency table
 source ~/NGS/cohort-matcher/env/bin/activate
-~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt
+~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt > genotypeFrequencyTable.txt
+aws s3 cp genotypeFrequencyTable.txt s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ --sse
 ```
 
 3.  Call compareSamples.py
