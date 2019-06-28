@@ -108,7 +108,7 @@ def parseArguments(argv):
     #                    help="S3 Path to Targets BED File")
 
     job_args = parser.add_argument_group("AWS Batch Job Settings") 
-    job_args.add_argument('-q', '--job-queue', action="store", default="freeBayesJobQueue-2a19e1d038bce86",
+    job_args.add_argument('-q', '--job-queue', action="store", default="freeBayesJobQueue-e36f01a082d3ba2",
                           help="AWS Batch Job Queue")
     job_args.add_argument('-j', '--job-definition', action="store", default="freebayes:1",
                           help="AWS Batch Job Definition")
