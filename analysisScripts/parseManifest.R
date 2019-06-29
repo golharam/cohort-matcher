@@ -28,13 +28,16 @@ sample_to_subject <- data.frame(paste(manifest$VENDORNAME, manifest$VRUNID, sep=
 write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
 
 ### Create the RNA-Seq bamsheet
-paste("Writing", "rna_bamsheet.txt")
 rna_samples <- manifest[manifest$ASSAYMETHOD=="RNA-Seq", ]
-rna_samples$sample_name <- paste(rna_samples$VENDORNAME, rna_samples$VRUNID, sep="")
-rna_samples$bamfile <- paste("s3://bmsrd-ngs-results/", rna_samples$BMSPROJECTID, "/bam/",
-                             rna_samples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
-rna_bamsheet <- data.frame(sample=rna_samples$sample_name, bamfile=rna_samples$bamfile, reference="GRCh37ERCC")
-write.table(rna_bamsheet, file="rna_bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+if (dim(rna_samples)[1] > 0) {
+  paste("Writing", "rna_bamsheet.txt")
+  paste("Writing", "rna_bamsheet.txt")
+  rna_samples$sample_name <- paste(rna_samples$VENDORNAME, rna_samples$VRUNID, sep="")
+  rna_samples$bamfile <- paste("s3://bmsrd-ngs-results/", rna_samples$BMSPROJECTID, "/bam/",
+                               rna_samples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
+  rna_bamsheet <- data.frame(sample=rna_samples$sample_name, bamfile=rna_samples$bamfile, reference="GRCh37ERCC")
+  write.table(rna_bamsheet, file="rna_bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+}
 
 ### Create the WES bamsheet
 # TODO: Sujaya, please fill in code here
@@ -43,6 +46,7 @@ wes_bamsheet <- read.table("wes_bamsheet.txt", header=FALSE, sep="\t")
 colnames(wes_bamsheet) <- colnames(rna_bamsheet)
 
 # Merge rna_bamsheet + wes_bamsheet and write out master bamsheet
-bamsheet <- rbind(wes_bamsheet, rna_bamsheet)
-write.table(bamsheet, file="bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
-
+if (dim(rna_samples)[1] > 0) {
+  bamsheet <- rbind(wes_bamsheet, rna_bamsheet)
+  write.table(bamsheet, file="bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+}

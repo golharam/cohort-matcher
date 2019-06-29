@@ -8,8 +8,8 @@
 ###
 
 ### Install required packages to run
-source("http://bioconductor.org/biocLite.R")
-biocLite(c("argparser", "logging"))
+#source("http://bioconductor.org/biocLite.R")
+#biocLite(c("argparser", "logging"))
 library(logging)
 basicConfig()
 ###
