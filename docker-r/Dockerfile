@@ -13,9 +13,12 @@ LABEL tags="Genomics"
 
 # System and library dependencies
 RUN apt-get -y update && apt-get clean
-RUN apt-get install libssl-dev libcurl4-openssl-dev 
+RUN apt-get install -y libssl-dev libcurl4-openssl-dev
 
 # Pre-reqs
-RUN Rscript -e "source('http://bioconductor.org/biocLite.R'); biocLite(c('argparser', 'circlize', 'canvasXpress'))"
+RUN Rscript -e "source('http://bioconductor.org/biocLite.R'); \
+                biocLite(c('argparser', 'circlize', 'canvasXpress', 'logging'))"
+
+COPY analysisScripts/findSwaps.R /
 
 # Application entry point
