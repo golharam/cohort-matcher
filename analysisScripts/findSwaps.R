@@ -35,7 +35,7 @@ rm(p)
 
 if (argv$installPackages) {
   source("http://bioconductor.org/biocLite.R")
-  biocLite("circlize")
+  biocLite(c("circlize", "devtools"))
   if (argv$canvasXpress) {
     devtools::install_github('neuhausi/canvasXpress')
   }
