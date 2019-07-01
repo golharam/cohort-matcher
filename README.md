@@ -74,12 +74,11 @@ mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-
 
 5.  Call findSwaps.R
 ```
+# Pre-req: Generate sampletoSubject using parseManifest.R
 Rscript analysisScripts/parseManifest.R -m BMS-Manifest.csv
 Rscript analysisScripts/findSwaps.R
-```
-or via Docker
-```
-docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
+# or via Docker
+docker run -ti --rm -v $PWD:/work -w /work cohort-matcher-r:latest Rscript /findSwaps.R
 ```
 
 ## Output ##
