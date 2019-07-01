@@ -74,6 +74,7 @@ mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-
 
 5.  Call findSwaps.R
 ```
+Rscript analysisScripts/parseManifest.R -m BMS-Manifest.csv
 Rscript analysisScripts/findSwaps.R
 ```
 or via Docker
