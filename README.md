@@ -25,7 +25,7 @@ Pre-req:  Make input bamsheet
 
 Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
 
-P-1234.bamsheet.txt:
+P-12345678-1234.bamsheet.txt:
 
 | sample  | s3 path to bamfile | reference |
 | ------------- | ------------- | ----- |
@@ -36,7 +36,8 @@ P-1234.bamsheet.txt:
 1.  Call genotypeSamples.py
 
 ```
-genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
+PROJECTID=P-12345678-1234
+genotypeSamples.py -b $PROJECTID.bamsheet.txt -o s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
 ```
 
 2.  Call constructGenotypeFrequencyTable
@@ -46,7 +47,6 @@ genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohor
 aws s3 cp s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed .
 
 # Download VCF files
-PROJECTID=P-12345678-1234
 mkdir vcfs
 for vcf in `aws s3 ls s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ | grep vcf | awk '{print $4}'`; do
     aws s3 cp s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/$vcf vcfs/
@@ -63,13 +63,13 @@ aws s3 cp genotypeFrequencyTable.txt s3://bmsrd-ngs-results/$PROJECTID/cohort-ma
 3.  Call compareSamples.py
 
 ```
-compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+compareSamples.py -b $PROJECTID.bamsheet.txt -CD s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
 ```
 
 4.  Call mergeResults.py
 
 ```
-mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+mergeResults.py -b $PROJECTID.bamsheet.txt -CD s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
 ```
 
 5.  Call findSwaps.R
