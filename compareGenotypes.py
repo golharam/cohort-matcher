@@ -5,6 +5,7 @@ Script to compare genotypes of samples
 from __future__ import division
 import argparse
 from fisher import pvalue
+from math import log
 import logging
 import os
 import vcf
@@ -64,7 +65,7 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
     diff_hom_het_ct = 0
     diff_2sub1_ct = 0
     diff_het_hom_ct = 0
-    gt_freq = 1
+    gt_log_prob = 0
 
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
@@ -86,8 +87,8 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
             # P-Value calc
             bits = pos_.split('\t')
             pos_counts = gtfreqtable[bits[0]][bits[1]]
-            gt1_freq = genotypeFrequency(gt1, pos_counts)
-            gt_freq = gt_freq * gt1_freq
+            gt1_prob = genotypeFrequency(gt1, pos_counts)
+            gt_log_prob += log(gt1_prob)
         else:
             ct_diff += 1
             # both are hom and different
@@ -150,7 +151,7 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
     results['diff_1sub2_ct'] = diff_1sub2_ct
     results['diff_2sub1_ct'] = diff_2sub1_ct
     results['allele_subset'] = allele_subset
-    results['gt_freq'] = gt_freq
+    results['gt_log_prob'] = gt_log_prob
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
@@ -265,7 +266,7 @@ def main(argv):
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_Freq\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -286,14 +287,11 @@ def main(argv):
             logger.info("\t{0:.4f} / {1} - {2} ({3})".format(results['frac_common'],
                                                                   results['total_compared'],
                                                                   results['short_judgement'],
-                                                                  results['gt_freq']))
-            #logger.info("\t%.4f / %d - %s (%f)", results['frac_common'], results['total_compared'],
-            #            results['short_judgement'], results['gt_freq'])
-
+                                                                  results['gt_log_prob']))
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
-            gtf = '{}'.format(results['gt_freq'])
+            gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
             fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, j]) + "\n")

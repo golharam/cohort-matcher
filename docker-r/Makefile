@@ -5,16 +5,17 @@ VERSION=0.1
 all: build 
 
 build:
-	docker build -t ${REGISTRY}/$(NAME):$(VERSION) \
-                 -t ${REGISTRY}/$(NAME):latest \
+	docker build -t ${REGISTRY}/${NAME}:${VERSION} \
+                 -t ${REGISTRY}/${NAME}:latest \
+                 -t ${NAME}:${VERSION} \
+                 -t ${NAME}:latest \
                  -f Dockerfile ../
-
 push:
 	aws ecr get-login --no-include-email --region us-east-1 | sh && \
 	docker push ${REGISTRY}/${NAME}:${VERSION} && \
 	docker push ${REGISTRY}/${NAME}:latest
 
-test:
+shell:
 	docker run --rm -ti --entrypoint "/bin/bash" ${REGISTRY}/${NAME}:latest
 
 run:

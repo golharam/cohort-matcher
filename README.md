@@ -10,13 +10,14 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 
 The basic workflow consists of:
 1. Genotype all the samples to be compared. (genotypeSamples.py)
-2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
-3. Merge the results of the sample comparisons (mergeResults.py)
-4. Generate plots based on results and known patient-to-sample assocation.
+2. Collect genotype frequency information from VCF files (constructGenotypeFrequencyTable)
+3. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
+4. Merge the results of the sample comparisons (mergeResults.py)
+5. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
 1.  Genotype each sample independently of each other
-2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+3.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
 
 # How to run #
 
@@ -38,25 +39,46 @@ P-1234.bamsheet.txt:
 genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-2.  Call compareSamples.py
+2.  Call constructGenotypeFrequencyTable
+
+```
+# Download BED file of SNPs
+aws s3 cp s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed .
+
+# Download VCF files
+PROJECTID=P-12345678-1234
+mkdir vcfs
+for vcf in `aws s3 ls s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ | grep vcf | awk '{print $4}'`; do
+    aws s3 cp s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/$vcf vcfs/
+done
+# Make VCF file list
+ls vcfs/* > vcffiles.txt
+
+# Construct genotype frequency table
+source ~/NGS/cohort-matcher/env/bin/activate
+~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt > genotypeFrequencyTable.txt
+aws s3 cp genotypeFrequencyTable.txt s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher/ --sse
+```
+
+3.  Call compareSamples.py
 
 ```
 compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-3.  Call mergeResults.py
+4.  Call mergeResults.py
 
 ```
 mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
 ```
 
-4.  Call findSwaps.R
+5.  Call findSwaps.R
 ```
+# Pre-req: Generate sampletoSubject using parseManifest.R
+
 Rscript analysisScripts/findSwaps.R
-```
-or via Docker
-```
-docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
+# or via Docker
+docker run -ti --rm -v $PWD:/work -w /work cohort-matcher-r:latest Rscript /findSwaps.R
 ```
 
 ## Output ##

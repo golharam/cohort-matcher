@@ -47,9 +47,6 @@ def main(argv):
     logger.info("%s v%s" % (__appname__, __version__))
     logger.info(args)
 
-    logger.warn("The while loop to watch for completed jobs does not work.  It get stuck on SUCCEEDED, hence this is a good time to debug it!")
-    return
-
     batch = boto3.client('batch')
 
     samples = readSamples(args.bamsheet)
@@ -99,17 +96,21 @@ def main(argv):
     logger.info("Submitted %s jobs", len(jobs))
     completed_jobs = []
     failed_jobs = []
-    while jobs:
-        logger.info("Waiting on %s jobs", len(jobs))
-        logger.info("Sleeping 60 secs")
-        time.sleep(60)
-        logger.info("Checking job %s", jobs[0])
-        response = batch.describe_jobs(jobs=[jobs[0]])
-        logger.info("Job %s state is %s", jobs[0], response['jobs'][0]['status'])
-        if response['jobs'][0]['status'] == 'SUCCEEDED':
-            completed_jobs.append(jobs.pop())
-        elif response['jobs'][0]['status'] == 'FAILED':
-            failed_jobs.append(jobs.pop())
+    for counter, jobid in enumerate(jobs):
+        status = ''
+        while status != 'SUCCEEDED' and status != 'FAILED':
+            logger.info("[%d/%d] Checking job %s", counter+1, len(jobs),  jobid)
+            response = batch.describe_jobs(jobs=[jobid])
+            status = response['jobs'][0]['status']
+            logger.info("Job %s state is %s", jobid, status)
+            if status == 'SUCCEEDED':
+                completed_jobs.append(jobid)
+            elif status == 'FAILED':
+                failed_jobs.append(jobid)
+            else:
+                logger.info("Sleeping 60 secs")
+                time.sleep(60)
+
     logger.info("Successed: %s", len(completed_jobs))
     logger.info("Failed: %s", len(failed_jobs))
 

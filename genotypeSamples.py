@@ -71,16 +71,21 @@ def main(argv):
     logger.info("Submitted %s jobs", len(genotypingJobs))
     completed_jobs = []
     failed_jobs = []
-    while genotypingJobs:
-        logger.info("Sleeping 60 secs")
-        time.sleep(60)
-        logger.info("Checking job %s", genotypingJobs[0])
-        response = batch.describe_jobs(jobs=[genotypingJobs[0]])
-        logger.info("Job %s state is %s", genotypingJobs[0], response['jobs'][0]['status'])
-        if response['jobs'][0]['status'] == 'SUCCEEDED':
-            completed_jobs.append(genotypingJobs.pop())
-        elif response['jobs'][0]['status'] == 'FAILED':
-            failed_jobs.append(genotypingJobs.pop())
+    for counter, jobid in enumerate(genotypingJobs):
+        status = ''
+        while status != 'SUCCEEDED' and status != 'FAILED':
+            logger.info("[%d/%d] Checking job %s", counter+1, len(genotypingJobs),  jobid)
+            response = batch.describe_jobs(jobs=[jobid])
+            status = response['jobs'][0]['status']
+            logger.info("Job %s state is %s", jobid, status)
+            if status == 'SUCCEEDED':
+                completed_jobs.append(jobid)
+            elif status == 'FAILED':
+                failed_jobs.append(jobid)
+            else:
+                logger.info("Sleeping 60 secs")
+                time.sleep(60)
+
     logger.info("Successed: %s", len(completed_jobs))
     logger.info("Failed: %s", len(failed_jobs))
 
@@ -103,7 +108,7 @@ def parseArguments(argv):
     #                    help="S3 Path to Targets BED File")
 
     job_args = parser.add_argument_group("AWS Batch Job Settings") 
-    job_args.add_argument('-q', '--job-queue', action="store", default="ngs-job-queue",
+    job_args.add_argument('-q', '--job-queue', action="store", default="freeBayesJobQueue-e36f01a082d3ba2",
                           help="AWS Batch Job Queue")
     job_args.add_argument('-j', '--job-definition', action="store", default="freebayes:1",
                           help="AWS Batch Job Definition")
