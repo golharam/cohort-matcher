@@ -18,14 +18,15 @@ Instead of visiting every cell, we only need to visit the ones with a X because 
 symmetrical about the axis
 '''
 import argparse
-import boto3
 import logging
 import os
 import time
 import subprocess
 import sys
 
-from common import find_bucket_key, listFiles, readSamples, uploadFile
+import boto3
+
+from common import listFiles, readSamples, uploadFile
 
 __appname__ = 'compareSamples'
 __version__ = "0.2"

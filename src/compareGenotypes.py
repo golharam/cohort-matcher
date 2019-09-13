@@ -109,8 +109,8 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
                 else:
                     diff_het_hom_ct += 1
             else:
-                print "WTF?"
-                print gt1, gt2
+                print("WTF?")
+                print(gt1, gt2)
                 exit(1)
 
     total_compared = ct_common + ct_diff
@@ -160,7 +160,9 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     ''' Make judgement of sample similarity based on genotype comparison '''
-    A_BIT_LOW = "the number of comparable genomic loci is a bit low. Try using a different variants list (--VCF) file which have more appropriate genomic positions for comparison."
+    A_BIT_LOW = """ the number of comparable genomic loci is a bit low. Try using a
+                    different variants list (--VCF) file which have more appropriate
+                    genomic positions for comparison."""
 
     if total_compared <= 20:
         judgement = "Inconclusive: Too few loci to compare"
@@ -174,7 +176,9 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += """ BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
+                judgement += """ BAM%s genotype appears to be a subset of BAM%s.
+                                 Possibly BAM%s is RNA-seq data or BAM%s is 
+                                 ontaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
@@ -193,13 +197,17 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += ", but with possible allele specific genotype. BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated." % (sub_, over_, sub_, over_)
+                judgement += """, but with possible allele specific genotype. BAM%s
+                genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq
+                data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "BAM FILES ARE FROM DIFFERENT SOURCES"
             short_judgement = "DIFFERENT"
         elif frac_common >= 0.8:
-            judgement = "LIKELY FROM THE SAME SOURCE. However, the fraction of sites with common genotype is lower than expected. This can happen with samples with low coverage."
+            judgement = """LIKELY FROM THE SAME SOURCE. However, the fraction of sites
+                           with common genotype is lower than expected. This can happen
+                           with samples with low coverage."""
             short_judgement = "LIKELY SAME"
         else:
             judgement = "LIKELY FROM DIFFERENT SOURCES"
@@ -220,7 +228,7 @@ def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s" % (__appname__, __version__))
+    logger.info("%s v%s", __appname__, __version__)
     logger.info(args)
 
     working_dir = generate_working_dir(args.working_dir)
@@ -230,10 +238,11 @@ def main(argv):
 
     # Download and read the bamsheet from the s3 cache directory
     downloadFile("%s/bamsheet.txt" % args.s3_cache_folder, "%s/bamsheet.txt" % working_dir)
+    # Determine the current sample index in the list of samples
     samples = readSamples("%s/bamsheet.txt" % working_dir)
     sample_index = -1
-    for i, s in enumerate(samples):
-        if s['name'] == sampleName:
+    for i, sample in enumerate(samples):
+        if sample['name'] == sampleName:
             sample_index = i
             break
     if sample_index == -1:
@@ -270,7 +279,8 @@ def main(argv):
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
-            logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples), sampleName, sample['name'])
+            logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples),
+                        sampleName, sample['name'])
 
             s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
             vcfFile = "%s/%s.vcf" % (working_dir, sample['name'])
@@ -327,7 +337,7 @@ def readGTFreqTable(gtfreqtable):
             gt_list[chr][pos]['G/T'] = int(gt)
             gt_list[chr][pos]['T/T'] = int(tt)
     return gt_list
- 
+
 def parseArguments(argv):
     ''' Parse arguments '''
     parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
@@ -449,4 +459,3 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
