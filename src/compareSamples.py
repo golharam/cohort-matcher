@@ -44,7 +44,7 @@ def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s" % (__appname__, __version__))
+    logger.info("%s v%s", __appname__, __version__)
     logger.info(args)
 
     batch = boto3.client('batch')
@@ -54,12 +54,12 @@ def main(argv):
         return -1
     # We don't need the last sample in the list so let's remove it
     samples.pop()
- 
+
     # Get a list of meltedResults files
     meltedResultsFiles = listFiles(args.s3_cache_folder, suffix='.meltedResults.txt')
 
-    # Upload the bamsheet to the cache directory (because each job will need to determine what samples 
-    #to compare against based on its order in the bamsheet)
+    # Upload the bamsheet to the cache directory (because each job will need to determine
+    # what samples to compare against based on its order in the bamsheet)
     if not args.dry_run:
         uploadFile(args.bamsheet, "%s/bamsheet.txt" % args.s3_cache_folder)
 
@@ -78,7 +78,8 @@ def main(argv):
                     response = _run(cmd)
             else:
                 if args.dry_run:
-                    logger.info("Would call batch.submit_job: compareGenotypes.py -s %s --s3_cache_folder %s",
+                    logger.info("Would call batch.submit_job: compareGenotypes.py -s %s "
+                                "--s3_cache_folder %s",
                                 sample['name'], args.s3_cache_folder)
                 else:
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample['name'],
@@ -139,4 +140,3 @@ def parseArguments(argv):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
