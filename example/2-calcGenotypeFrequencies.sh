@@ -9,5 +9,5 @@ done
 ls vcfs/* > vcffiles.txt
 
 source ~/NGS/cohort-matcher/env/bin/activate
-~/NGS/cohort-matcher/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt > genotypeFrequencyTable.txt
+~/NGS/cohort-matcher/src/constructGenotypeFrequencyTable -B GRCh37ERCC.cohort-matcher.bed -L vcffiles.txt > genotypeFrequencyTable.txt
 aws s3 cp genotypeFrequencyTable.txt s3://bmsrd-ngs-results/P-20170601-0007/cohort-matcher/ --sse
