@@ -4,14 +4,15 @@ Script to compare genotypes of samples
 '''
 from __future__ import division
 import argparse
-from fisher import pvalue
 from math import log
 import logging
 import os
-import vcf
 import sys
+import csv
+from fisher import pvalue
+import vcf
 
-from common import downloadFile, uploadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
+from common import downloadFile, uploadFile, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
 __version__ = "0.2"
@@ -261,7 +262,7 @@ def main(argv):
             os.remove(tsvFile)
         else:
             logger.error("Failed to convert VCF to TSV, %s -> %s", vcfFile, tsvFile)
-            return -1 
+            return -1
         os.remove(vcfFile)
     else:
         logger.error("Failed to download %s", s3_vcfFile)
@@ -273,9 +274,15 @@ def main(argv):
     downloadFile(s3_gtfreqtable, gtfreqtable)
     gtfreqtable = readGTFreqTable(gtfreqtable)
 
+    # Get the pvalue table
+    s3_pvaluetable = "%s/pvalueTable.txt" % args.s3_cache_folder
+    pvaluetable = "%s/pvalueTable.txt" % working_dir
+    downloadFile(s3_pvaluetable, pvaluetable)
+    pvaluetable = readPValueTable(pvaluetable)
+
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tMax_pvalue\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -294,17 +301,19 @@ def main(argv):
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
             results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            logger.info("\t{0:.4f} / {1} - {2} ({3})".format(results['frac_common'],
-                                                                  results['total_compared'],
-                                                                  results['short_judgement'],
-                                                                  results['gt_log_prob']))
+            pvalue = pvaluetable[sampleName][sample['name']]
+            logger.info("\t{0:.4f} / {1} - {2} ({3}) ({4})".format(results['frac_common'],
+                                                                   results['total_compared'],
+                                                                   results['short_judgement'],
+                                                                   results['gt_log_prob'],
+                                                                   pvalue))
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
             gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, j]) + "\n")
+            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, pvalue, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
@@ -313,6 +322,16 @@ def main(argv):
     os.remove(meltedResultsFile)
     delete_working_dir(working_dir)
     logger.info('Completed')
+
+def readPValueTable(pvaluetable):
+    ''' Read the pvalue table '''
+    ptable = {}
+    reader = csv.DictReader(open(pvaluetable))
+    for row in reader:
+        if row["sample_ID_1"] not in ptable:
+            ptable[row["sample_ID_1"]] = {}
+        ptable[row["sample_ID_1"]][row["sample_ID_2"]] = row["prob_from_same_subject"]
+    return ptable
 
 def readGTFreqTable(gtfreqtable):
     ''' Read the genotype frequency table '''
