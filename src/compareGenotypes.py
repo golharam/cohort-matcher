@@ -275,14 +275,14 @@ def main(argv):
     gtfreqtable = readGTFreqTable(gtfreqtable)
 
     # Get the pvalue table
-    s3_pvaluetable = "%s/pvalueTable.txt" % args.s3_cache_folder
-    pvaluetable = "%s/pvalueTable.txt" % working_dir
-    downloadFile(s3_pvaluetable, pvaluetable)
-    pvaluetable = readPValueTable(pvaluetable)
+    s3_probtable = "%s/data_full_compare.csv" % args.s3_cache_folder
+    probtable = "%s/data_full_compare.csv" % working_dir
+    downloadFile(s3_probtable, probtable)
+    probtable = readPValueTable(probtable)
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tMax_pvalue\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tMax_probability\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -301,19 +301,19 @@ def main(argv):
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
             results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            pvalue = pvaluetable[sampleName][sample['name']]
+            max_prob = probtable[sampleName][sample['name']]
             logger.info("\t{0:.4f} / {1} - {2} ({3}) ({4})".format(results['frac_common'],
                                                                    results['total_compared'],
                                                                    results['short_judgement'],
                                                                    results['gt_log_prob'],
-                                                                   pvalue))
+                                                                   max_prob))
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
             gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, pvalue, j]) + "\n")
+            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, max_prob, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
