@@ -274,11 +274,11 @@ def main(argv):
     downloadFile(s3_gtfreqtable, gtfreqtable)
     gtfreqtable = readGTFreqTable(gtfreqtable)
 
-    # Get the pvalue table
+    # Get the probability table
     s3_probtable = "%s/data_full_compare.csv" % args.s3_cache_folder
     probtable = "%s/data_full_compare.csv" % working_dir
     downloadFile(s3_probtable, probtable)
-    probtable = readPValueTable(probtable)
+    probtable = readProbabilityTable(probtable)
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
@@ -301,7 +301,10 @@ def main(argv):
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
             results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            max_prob = probtable[sampleName][sample['name']]
+            if sample['name'] in probtable[sampleName]:
+                max_prob = probtable[sampleName][sample['name']]
+            else:
+                max_prob = 'Unk'
             logger.info("\t{0:.4f} / {1} - {2} ({3}) ({4})".format(results['frac_common'],
                                                                    results['total_compared'],
                                                                    results['short_judgement'],
@@ -323,14 +326,20 @@ def main(argv):
     delete_working_dir(working_dir)
     logger.info('Completed')
 
-def readPValueTable(pvaluetable):
-    ''' Read the pvalue table '''
+def readProbabilityTable(probtable):
+    ''' Read the probability table '''
     ptable = {}
-    reader = csv.DictReader(open(pvaluetable))
+    reader = csv.DictReader(open(probtable))
     for row in reader:
         if row["sample_ID_1"] not in ptable:
             ptable[row["sample_ID_1"]] = {}
-        ptable[row["sample_ID_1"]][row["sample_ID_2"]] = row["prob_from_same_subject"]
+        if row["sample_ID_2"] not in ptable:
+            ptable[row["sample_ID_2"]] = {}
+
+        if row["sample_ID_2"] not in ptable[row["sample_ID_1"]]:
+            ptable[row["sample_ID_1"]][row["sample_ID_2"]] = row["prob_from_same_subject"]
+        if row["sample_ID_1"] not in ptable[row["sample_ID_2"]]:
+            ptable[row["sample_ID_2"]][row["sample_ID_1"]] = row["prob_from_same_subject"]
     return ptable
 
 def readGTFreqTable(gtfreqtable):
