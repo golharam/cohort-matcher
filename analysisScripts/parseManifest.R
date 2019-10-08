@@ -10,43 +10,73 @@
 #install.packages(c('argparser'))
 library(argparser, quietly=TRUE)
 p <- arg_parser("cohort-matcher prereq")
-p <- add_argument(p, "--manifest", help="Manifest File", default="BMS-Manifest.csv")
-p <- add_argument(p, "--sampleToSubject", help="Sample to patient mapping", default="sampleToSubject.txt")
+p <- add_argument(p, "--manifest", help="[Input] Manifest File", default="BMS-Manifest.csv")
+p <- add_argument(p, "--bamsheet", help="[Output] BAM sheet", default="bamsheet.txt")
+p <- add_argument(p, "--sampleToSubject", help="[Output] Sample to patient mapping", default="sampleToSubject.txt")
 argv <- parse_args(p)
 
 manifestFile <- argv$manifest
 sampleToSubjectFile <- argv$sampleToSubject
+bamsheetFile <- argv$bamsheet
 ###
 
-### Read manifest
-manifest <- read.csv(manifestFile)
+### Read manifest file
+manifest <- read.csv(manifestFile, header = TRUE)
+
+# Select 1 row for each sample 
 manifest <- manifest[manifest$VRUNIDSUFFIX==1,]
 
-### Create the sample to subject file
+# Get WES Samples
+wesSamples <- subset(manifest, ASSAYMETHOD=="WES", 
+                     select=c("USUBJID", "SPECTYPE", "ASSAYMETHOD", "VRUNID", "VENDORNAME", "BMSPROJECTID"))
+wesNormal <- subset(wesSamples, grepl("NORMAL", SPECTYPE), select=c("USUBJID", "VRUNID"))
+wesTumor <- subset(wesSamples, grepl("TUMOR", SPECTYPE), select=c("USUBJID", "VRUNID"))
+
+# Get RNA-Seq Samples
+rnaSamples <- subset(manifest, ASSAYMETHOD=="RNA-Seq", 
+                     select=c("USUBJID", "SPECTYPE", "ASSAYMETHOD", "VRUNID", "VENDORNAME", "BMSPROJECTID"))
+rnaNormal <- subset(rnaSamples, grepl("NORMAL", SPECTYPE), select=c("USUBJID", "VRUNID"))
+rnaTumor <- subset(rnaSamples, grepl("TUMOR", SPECTYPE), select=c("USUBJID", "VRUNID"))
+
+# Match WES Tumor - Normal
+#wesMatchedSamples <- merge(wesTumor, wesNormal, by="USUBJID", all = TRUE)
+#colnames(wesMatchedSamples) <- c("USUBJID", "WES.Tumor.VRUNID", "WES.Normal.VRUNID")
+  
+# Match RNA-Seq Tumor - Normal
+#rnaSeqMatchedSamples <- merge(rnaTumor, rnaNormal, by="USUBJID", all = TRUE)
+#colnames(rnaSeqMatchedSamples) <- c("USUBJID", "RNASeq.Tumor.VRUNID", "RNASeq.Normal.VRUNID")
+
+# Print out sample counts
+message("WES Tumor: ", dim(wesTumor)[1])
+message("WES Normal: ", dim(wesNormal)[1])
+message("WES Samples: ", dim(wesSamples)[1])
+message("RNA Tumor: ", dim(rnaTumor)[1])
+message("RNA Normal: ", dim(rnaNormal)[1])
+message("RNA Samples: ", dim(rnaSamples)[1])
+message("Total Samples: ", dim(manifest)[1])
+
+# Create the sample to subject file
+sample_to_subject <- data.frame(sample=paste(manifest$VENDORNAME, manifest$VRUNID, sep=""), subject=manifest$USUBJID)
 paste("Writing", sampleToSubjectFile)
-sample_to_subject <- data.frame(paste(manifest$VENDORNAME, manifest$VRUNID, sep=""), manifest$USUBJID)
-write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 
-### Create the RNA-Seq bamsheet
-rna_samples <- manifest[manifest$ASSAYMETHOD=="RNA-Seq", ]
-if (dim(rna_samples)[1] > 0) {
-  paste("Writing", "rna_bamsheet.txt")
-  paste("Writing", "rna_bamsheet.txt")
-  rna_samples$sample_name <- paste(rna_samples$VENDORNAME, rna_samples$VRUNID, sep="")
-  rna_samples$bamfile <- paste("s3://bmsrd-ngs-results/", rna_samples$BMSPROJECTID, "/bam/",
-                               rna_samples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
-  rna_bamsheet <- data.frame(sample=rna_samples$sample_name, bamfile=rna_samples$bamfile, reference="GRCh37ERCC")
-  write.table(rna_bamsheet, file="rna_bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+# Create the WES bamsheet
+if (dim(wesSamples)[1] > 0) {
+  wesSamples$sample_name <- paste(wesSamples$VENDORNAME, wesSamples$VRUNID, sep="")
+  wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg19/BAM/",
+                               wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
+  bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
 }
 
-### Create the WES bamsheet
-# TODO: Sujaya, please fill in code here
-#wes_bamsheet <- data.frame(sample=..., bamfile=..., reference="hg19")
-wes_bamsheet <- read.table("wes_bamsheet.txt", header=FALSE, sep="\t")
-colnames(wes_bamsheet) <- colnames(rna_bamsheet)
-
-# Merge rna_bamsheet + wes_bamsheet and write out master bamsheet
-if (dim(rna_samples)[1] > 0) {
-  bamsheet <- rbind(wes_bamsheet, rna_bamsheet)
-  write.table(bamsheet, file="bamsheet.txt", sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+# Create the RNA-Seq bamsheet and merge to wes bamsheet
+if (dim(rnaSamples)[1] > 0) {
+  rnaSamples$sample_name <- paste(rnaSamples$VENDORNAME, rnaSamples$VRUNID, sep="")
+  rnaSamples$bamfile <- paste("s3://bmsrd-ngs-results/", rnaSamples$BMSPROJECTID, "/bam/",
+                               rnaSamples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
+  rna_bamsheet <- data.frame(sample=rnaSamples$sample_name, bamfile=rnaSamples$bamfile, reference="GRCh37ERCC")
+  bamsheet <- rbind(bamsheet, rna_bamsheet)
 }
+
+# Write out the master bamsheet
+paste("Writing", bamsheetFile)
+write.table(bamsheet, file=bamsheetFile, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
