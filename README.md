@@ -5,16 +5,17 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 # Algorithm #
 
 The basic workflow consists of:
-1. Genotype all the samples to be compared.
+1. Construct a bamsheet.
+2. Genotype all the samples to be compared.
    script: genotypeSamples.py
-2a. Collect genotype frequency information from VCF files
+3a. Collect genotype frequency information from VCF files
    script: constructGenotypeFrequencyTable
-2b. Calculate p-value of similarity (Max's code -> data_full_compare)
-3. Compare the genotypes of each sample against the genotypes of all the other samples.
+3b. Calculate p-value of similarity (Max's code -> data_full_compare)
+4. Compare the genotypes of each sample against the genotypes of all the other samples.
    script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
-4. Merge the results of the sample comparisons
+5. Merge the results of the sample comparisons
    script: mergeResults.py
-5. Generate plots based on results and known patient-to-sample assocation.
+6. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
 1.  Genotype each sample independently of each other
