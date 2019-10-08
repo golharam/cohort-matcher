@@ -5,7 +5,7 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 # Algorithm #
 
 The basic workflow consists of:
-1. Construct a bamsheet.
+1. Construct a bamsheet, using analysisScripts/parseManifest.R
 2. Genotype all the samples to be compared.
    script: genotypeSamples.py
 3a. Collect genotype frequency information from VCF files
