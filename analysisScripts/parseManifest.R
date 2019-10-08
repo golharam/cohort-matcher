@@ -79,4 +79,4 @@ if (dim(rnaSamples)[1] > 0) {
 
 # Write out the master bamsheet
 paste("Writing", bamsheetFile)
-write.table(bamsheet, file=bamsheetFile, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+write.table(bamsheet, file=bamsheetFile, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
