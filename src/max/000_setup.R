@@ -1,4 +1,3 @@
-
 # list.of.packages <- c("poibin","truncdist")
 # new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 # if(length(new.packages)) install.packages(new.packages)
@@ -19,10 +18,17 @@ if (Sys.getenv()[["USER"]]=="domino"){
   results_dir = "/mnt/results/"
   
 } else {
-  dir = "/Users/golharr/workspace/P01465_CohortMatcher"
-  data_dir_1 = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/input/"
-  data_dir_2 = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/input2/"
-  results_dir = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/results/"
+  #dir = "/Users/golharr/workspace/P01465_CohortMatcher"
+  #data_dir_1 = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/input/"
+  #data_dir_2 = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/input2/"
+  #results_dir = "/Users/golharr/workspace/P01465_CohortMatcher/data/P-20160627-0001/results/"
+  #dir = "."
+  code_dir = "/Users/golharr/workspace/NGS/cohort-matcher/src/max/"
+  vcf_dir = "vcfs/"
+  cache_dir = "cache/"
+  #data_dir_1 = "."
+  #data_dir_2 = "."
+  results_dir = "results/"
 }
 
 

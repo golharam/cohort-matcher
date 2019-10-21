@@ -2,7 +2,7 @@
 ###############################################
 
 # Get a list of VCFs and sample names from the vcfs
-vcf_list = list.files(path=data_dir_1,pattern = "\\.vcf$")
+vcf_list = list.files(path=vcf_dir,pattern = "\\.vcf$")
 sample_ID_list = sapply(vcf_list, USE.NAMES = FALSE, function(x){strsplit(x, ".vcf", fixed=T)[[1]][1]} )
 
 # Ths will contain a list of vcfs and samples processed.   
@@ -13,8 +13,8 @@ sample_ID_list_new = {}
 # Read in all the VCFs to test_data.  This is basically a merged VCF
 for (i in 1:length(vcf_list)) {
 
-    message("[", i, "/", length(vcf_list), "] Reading ", paste(data_dir_1,vcf_list[i],sep=""))
-    tmp = read.table(file=paste(data_dir_1,vcf_list[i],sep=""), header=T)
+    message("[", i, "/", length(vcf_list), "] Reading ", paste(vcf_dir,vcf_list[i],sep=""))
+    tmp = read.table(file=paste(vcf_dir,vcf_list[i],sep=""), header=T)
     
     colnames(tmp) = c("CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", sample_ID_list[i])
 
@@ -48,12 +48,11 @@ for (i in 1:length(vcf_list)) {
     sample_ID_list_new = c(sample_ID_list_new, sample_ID_list[i])
 }
 rm(i)
-rm(j)
 rm(vcf_list)
 rm(sample_ID_list)
 
 # Read in sampleToSubject map
-sampleTosubject =  read.table(file=paste(data_dir_2,"sampleToSubject.txt",sep=""), header=T, stringsAsFactors =F) # nrow could be > number of samples in test_data
+sampleTosubject =  read.table(file=paste("sampleToSubject.txt",sep=""), header=T, stringsAsFactors =F) # nrow could be > number of samples in test_data
 sampleTosubject = subset(sampleTosubject, sampleTosubject$SAMPLE%in%sample_ID_list_new)
 sampleTosubject = sampleTosubject[match(sample_ID_list_new, sampleTosubject$SAMPLE),]
 colnames(sampleTosubject) = c("sample_ID","subject_ID")

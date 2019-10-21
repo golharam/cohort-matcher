@@ -8,7 +8,7 @@ start_time <- Sys.time()
 set.seed(1)
 
 
-source(file=paste(dir,"/code/R/src_functions.R",sep=""))
+source(file=paste(code_dir,"src_functions.R",sep=""))
 
 ind_subset_data = FALSE # only test on a subset of the full data, but may still use the full data to estimate the population genotype freqs
 if (ind_subset_data==TRUE) n_subset_data = 200
