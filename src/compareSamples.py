@@ -64,6 +64,7 @@ def main(argv):
     if not args.dry_run:
         uploadFile(args.bamsheet, "%s/bamsheet.txt" % args.s3_cache_folder)
 
+    response = None
     jobs = []
     for sample in samples:
         meltedResults = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
