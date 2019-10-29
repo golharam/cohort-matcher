@@ -34,7 +34,7 @@ def main(argv):
         downloadFile(meltedResultFile, f)
         localMeltedResultsFiles.append(f)
 
-    meltedResultsFile = "meltedResults.txt"
+    meltedResultsFile = "%s/meltedResults.txt" % working_dir
     with open(meltedResultsFile, 'w') as outfile:
         header_written = False
         for i, fname in enumerate(localMeltedResultsFiles):
