@@ -4,14 +4,15 @@ Script to compare genotypes of samples
 '''
 from __future__ import division
 import argparse
-from fisher import pvalue
 from math import log
 import logging
 import os
-import vcf
 import sys
+import csv
+from fisher import pvalue
+import vcf
 
-from common import downloadFile, uploadFile, find_bucket_key, listFiles, readSamples, generate_working_dir, delete_working_dir
+from common import downloadFile, uploadFile, readSamples, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
 __version__ = "0.2"
@@ -109,8 +110,8 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
                 else:
                     diff_het_hom_ct += 1
             else:
-                print "WTF?"
-                print gt1, gt2
+                print("WTF?")
+                print(gt1, gt2)
                 exit(1)
 
     total_compared = ct_common + ct_diff
@@ -160,7 +161,9 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
 
 def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
     ''' Make judgement of sample similarity based on genotype comparison '''
-    A_BIT_LOW = "the number of comparable genomic loci is a bit low. Try using a different variants list (--VCF) file which have more appropriate genomic positions for comparison."
+    A_BIT_LOW = """ the number of comparable genomic loci is a bit low. Try using a
+                    different variants list (--VCF) file which have more appropriate
+                    genomic positions for comparison."""
 
     if total_compared <= 20:
         judgement = "Inconclusive: Too few loci to compare"
@@ -174,7 +177,9 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += """ BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
+                judgement += """ BAM%s genotype appears to be a subset of BAM%s.
+                                 Possibly BAM%s is RNA-seq data or BAM%s is 
+                                 ontaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
@@ -193,13 +198,17 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
             if allele_subset == "1sub2" or allele_subset == "2sub1":
                 sub_ = allele_subset.split("sub")[0]
                 over_ = allele_subset.split("sub")[1]
-                judgement += ", but with possible allele specific genotype. BAM%s genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq data or BAM%s is contaminated." % (sub_, over_, sub_, over_)
+                judgement += """, but with possible allele specific genotype. BAM%s
+                genotype appears to be a subset of BAM%s. Possibly BAM%s is RNA-seq
+                data or BAM%s is contaminated.""" % (sub_, over_, sub_, over_)
                 short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "BAM FILES ARE FROM DIFFERENT SOURCES"
             short_judgement = "DIFFERENT"
         elif frac_common >= 0.8:
-            judgement = "LIKELY FROM THE SAME SOURCE. However, the fraction of sites with common genotype is lower than expected. This can happen with samples with low coverage."
+            judgement = """LIKELY FROM THE SAME SOURCE. However, the fraction of sites
+                           with common genotype is lower than expected. This can happen
+                           with samples with low coverage."""
             short_judgement = "LIKELY SAME"
         else:
             judgement = "LIKELY FROM DIFFERENT SOURCES"
@@ -220,7 +229,7 @@ def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s" % (__appname__, __version__))
+    logger.info("%s v%s", __appname__, __version__)
     logger.info(args)
 
     working_dir = generate_working_dir(args.working_dir)
@@ -230,10 +239,11 @@ def main(argv):
 
     # Download and read the bamsheet from the s3 cache directory
     downloadFile("%s/bamsheet.txt" % args.s3_cache_folder, "%s/bamsheet.txt" % working_dir)
+    # Determine the current sample index in the list of samples
     samples = readSamples("%s/bamsheet.txt" % working_dir)
     sample_index = -1
-    for i, s in enumerate(samples):
-        if s['name'] == sampleName:
+    for i, sample in enumerate(samples):
+        if sample['name'] == sampleName:
             sample_index = i
             break
     if sample_index == -1:
@@ -252,7 +262,7 @@ def main(argv):
             os.remove(tsvFile)
         else:
             logger.error("Failed to convert VCF to TSV, %s -> %s", vcfFile, tsvFile)
-            return -1 
+            return -1
         os.remove(vcfFile)
     else:
         logger.error("Failed to download %s", s3_vcfFile)
@@ -264,13 +274,20 @@ def main(argv):
     downloadFile(s3_gtfreqtable, gtfreqtable)
     gtfreqtable = readGTFreqTable(gtfreqtable)
 
+    # Get the probability table
+    s3_probtable = "%s/data_full_compare.csv" % args.s3_cache_folder
+    probtable = "%s/data_full_compare.csv" % working_dir
+    downloadFile(s3_probtable, probtable)
+    probtable = readProbabilityTable(probtable)
+
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tMax_probability\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
-            logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples), sampleName, sample['name'])
+            logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples),
+                        sampleName, sample['name'])
 
             s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
             vcfFile = "%s/%s.vcf" % (working_dir, sample['name'])
@@ -284,17 +301,22 @@ def main(argv):
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
             results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            logger.info("\t{0:.4f} / {1} - {2} ({3})".format(results['frac_common'],
-                                                                  results['total_compared'],
-                                                                  results['short_judgement'],
-                                                                  results['gt_log_prob']))
+            if sample['name'] in probtable[sampleName]:
+                max_prob = probtable[sampleName][sample['name']]
+            else:
+                max_prob = 'Unk'
+            logger.info("\t{0:.4f} / {1} - {2} ({3}) ({4})".format(results['frac_common'],
+                                                                   results['total_compared'],
+                                                                   results['short_judgement'],
+                                                                   results['gt_log_prob'],
+                                                                   max_prob))
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
             gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, j]) + "\n")
+            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, max_prob, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
@@ -303,6 +325,22 @@ def main(argv):
     os.remove(meltedResultsFile)
     delete_working_dir(working_dir)
     logger.info('Completed')
+
+def readProbabilityTable(probtable):
+    ''' Read the probability table '''
+    ptable = {}
+    reader = csv.DictReader(open(probtable))
+    for row in reader:
+        if row["sample_ID_1"] not in ptable:
+            ptable[row["sample_ID_1"]] = {}
+        if row["sample_ID_2"] not in ptable:
+            ptable[row["sample_ID_2"]] = {}
+
+        if row["sample_ID_2"] not in ptable[row["sample_ID_1"]]:
+            ptable[row["sample_ID_1"]][row["sample_ID_2"]] = row["prob_from_same_subject"]
+        if row["sample_ID_1"] not in ptable[row["sample_ID_2"]]:
+            ptable[row["sample_ID_2"]][row["sample_ID_1"]] = row["prob_from_same_subject"]
+    return ptable
 
 def readGTFreqTable(gtfreqtable):
     ''' Read the genotype frequency table '''
@@ -327,7 +365,7 @@ def readGTFreqTable(gtfreqtable):
             gt_list[chr][pos]['G/T'] = int(gt)
             gt_list[chr][pos]['T/T'] = int(tt)
     return gt_list
- 
+
 def parseArguments(argv):
     ''' Parse arguments '''
     parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
@@ -449,4 +487,3 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-

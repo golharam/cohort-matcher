@@ -3,11 +3,8 @@
 Script to merge results of compareSamples.py/compareGenotypes.py.
 '''
 import argparse
-import boto3
 import logging
-import os
 import sys
-import pandas as pd
 from common import downloadFile, readSamples, uploadFile, generate_working_dir
 
 __appname__ = 'mergeResults'
@@ -19,7 +16,7 @@ def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s" % (__appname__, __version__))
+    logger.info("%s v%s", __appname__, __version__)
     logger.info(args)
 
     samples = readSamples(args.bamsheet)
@@ -41,7 +38,8 @@ def main(argv):
     with open(meltedResultsFile, 'w') as outfile:
         header_written = False
         for i, fname in enumerate(localMeltedResultsFiles):
-            logger.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname, meltedResultsFile)
+            logger.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname, 
+                        meltedResultsFile)
             with open(fname) as infile:
                 if header_written is False:
                     # Write complete file out
@@ -79,4 +77,3 @@ def parseArguments(argv):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
