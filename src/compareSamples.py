@@ -57,7 +57,10 @@ def main(argv):
     samples.pop()
 
     # Get a list of meltedResults files
-    meltedResultsFiles = listFiles(args.s3_cache_folder, suffix='.meltedResults.txt')
+    if args.force is True:
+        meltedResultsFiles = []
+    else:
+        meltedResultsFiles = listFiles(args.s3_cache_folder, suffix='.meltedResults.txt')
 
     # Upload the bamsheet to the cache directory (because each job will need to determine
     # what samples to compare against based on its order in the bamsheet)
@@ -130,6 +133,9 @@ def parseArguments(argv):
     required_args.add_argument("-CD", "--s3_cache_folder", required=True, 
                                help="Specify S3 path for cached VCF/TSV files")
 
+    job_args = parser.add_argument_group("Optional")
+    job_args.add_argument('-f', '--force', action="store_true", default=False,
+                          help="Force re-run")
     job_args = parser.add_argument_group("AWS Batch Job Settings")
     job_args.add_argument('--local', action="store_true", default=False,
                           help="Run locally instead of in AWS Batch")
