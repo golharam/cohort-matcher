@@ -37,24 +37,7 @@ def is_subset(hom_gt, het_gt):
     gt_hom = hom_gt.split("/")[0]
     return gt_hom in het_gt
 
-def genotypeFrequency(gt, gt_frequencies):
-    '''
-    Calculate the frequency of genotype
-
-    :param gt: Genotype of interest e.g. 'A/G'
-    :param gt_frequencies: {'A/A': '0', ... }
-    :return: Float, frequency of genotype
-    '''
-    sum = 0
-    for _ in gt_frequencies:
-        sum += gt_frequencies[_]
-    a1, a2 = gt.split('/')
-    if a1 > a2:
-        _ = "%s/%s" % (a2, a1)
-        return gt_frequencies[_]/sum
-    return gt_frequencies[gt]/sum
-
-def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
+def compareGenotypes(var_list, var_list2, intersection):
     ''' Compare genotypes of two samples '''
     ct_common = 0
     comm_hom_ct = 0
@@ -66,7 +49,6 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
     diff_hom_het_ct = 0
     diff_2sub1_ct = 0
     diff_het_hom_ct = 0
-    gt_log_prob = 0
 
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
@@ -87,9 +69,6 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
 
             # P-Value calc
             bits = pos_.split('\t')
-            pos_counts = gtfreqtable[bits[0]][bits[1]]
-            gt1_prob = genotypeFrequency(gt1, pos_counts)
-            gt_log_prob += log(gt1_prob)
         else:
             ct_diff += 1
             # both are hom and different
@@ -152,7 +131,6 @@ def compareGenotypes(var_list, var_list2, intersection, gtfreqtable):
     results['diff_1sub2_ct'] = diff_1sub2_ct
     results['diff_2sub1_ct'] = diff_2sub1_ct
     results['allele_subset'] = allele_subset
-    results['gt_log_prob'] = gt_log_prob
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
@@ -268,21 +246,9 @@ def main(argv):
         logger.error("Failed to download %s", s3_vcfFile)
         return -1
 
-    # Get genotype frequency table
-    s3_gtfreqtable = "%s/genotypeFrequencyTable.txt" % args.s3_cache_folder
-    gtfreqtable = "%s/genotypeFrequencyTable.txt" % working_dir
-    downloadFile(s3_gtfreqtable, gtfreqtable)
-    gtfreqtable = readGTFreqTable(gtfreqtable)
-
-    # Get the probability table
-    s3_probtable = "%s/data_full_compare.csv" % args.s3_cache_folder
-    probtable = "%s/data_full_compare.csv" % working_dir
-    downloadFile(s3_probtable, probtable)
-    probtable = readProbabilityTable(probtable)
-
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tGT_log_prob\tMax_probability\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -300,23 +266,13 @@ def main(argv):
 
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
-            results = compareGenotypes(var_list, var_list2, intersection, gtfreqtable)
-            if sample['name'] in probtable[sampleName]:
-                max_prob = probtable[sampleName][sample['name']]
-            else:
-                max_prob = 'Unk'
-            logger.info("\t{0:.4f} / {1} - {2} ({3}) ({4})".format(results['frac_common'],
-                                                                   results['total_compared'],
-                                                                   results['short_judgement'],
-                                                                   results['gt_log_prob'],
-                                                                   max_prob))
+            results = compareGenotypes(var_list, var_list2, intersection)
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             fm = '%.4f' % results['frac_common']
-            gtf = '{}'.format(results['gt_log_prob'])
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, gtf, max_prob, j]) + "\n")
+            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
@@ -325,46 +281,6 @@ def main(argv):
     os.remove(meltedResultsFile)
     delete_working_dir(working_dir)
     logger.info('Completed')
-
-def readProbabilityTable(probtable):
-    ''' Read the probability table '''
-    ptable = {}
-    reader = csv.DictReader(open(probtable))
-    for row in reader:
-        if row["sample_ID_1"] not in ptable:
-            ptable[row["sample_ID_1"]] = {}
-        if row["sample_ID_2"] not in ptable:
-            ptable[row["sample_ID_2"]] = {}
-
-        if row["sample_ID_2"] not in ptable[row["sample_ID_1"]]:
-            ptable[row["sample_ID_1"]][row["sample_ID_2"]] = row["prob_from_same_subject"]
-        if row["sample_ID_1"] not in ptable[row["sample_ID_2"]]:
-            ptable[row["sample_ID_2"]][row["sample_ID_1"]] = row["prob_from_same_subject"]
-    return ptable
-
-def readGTFreqTable(gtfreqtable):
-    ''' Read the genotype frequency table '''
-    gt_list = dict()
-    with open(gtfreqtable, "r") as fin:
-        for line in fin:
-            if line.startswith("CHR"):
-                continue
-            chr, pos, aa, ac, ag, at, cc, cg, ct, gg, gt, tt = line.strip("\n").split("\t")
-            if chr not in gt_list:
-                gt_list[chr] = dict()
-            if pos not in gt_list[chr]:
-                gt_list[chr][pos] = dict()
-            gt_list[chr][pos]['A/A'] = int(aa)
-            gt_list[chr][pos]['A/C'] = int(ac)
-            gt_list[chr][pos]['A/G'] = int(ag)
-            gt_list[chr][pos]['A/T'] = int(at)
-            gt_list[chr][pos]['C/C'] = int(cc)
-            gt_list[chr][pos]['C/G'] = int(cg)
-            gt_list[chr][pos]['C/T'] = int(ct)
-            gt_list[chr][pos]['G/G'] = int(gg)
-            gt_list[chr][pos]['G/T'] = int(gt)
-            gt_list[chr][pos]['T/T'] = int(tt)
-    return gt_list
 
 def parseArguments(argv):
     ''' Parse arguments '''

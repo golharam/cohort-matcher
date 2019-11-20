@@ -19,8 +19,8 @@ RUN pip install numpy && \
     pip install argparse boto3 fisher pyvcf
 
 # cohort-matcher
-COPY compareGenotypes.py /
-COPY common.py /
+COPY src/compareGenotypes.py /
+COPY src/common.py /
 RUN chmod +x /compareGenotypes.py
 
 # Application entry point
