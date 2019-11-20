@@ -25,6 +25,7 @@ import subprocess
 import sys
 
 import boto3
+import botocore
 
 from common import listFiles, readSamples, uploadFile
 
@@ -106,8 +107,13 @@ def main(argv):
         status = ''
         while status != 'SUCCEEDED' and status != 'FAILED':
             logger.info("[%d/%d] Checking job %s", counter+1, len(jobs),  jobid)
-            response = batch.describe_jobs(jobs=[jobid])
-            status = response['jobs'][0]['status']
+            try:
+                response = batch.describe_jobs(jobs=[jobid])
+                status = response['jobs'][0]['status']
+            except botocore.exceptions.ClientError as err:
+                logger.error(err.response)
+                pass
+
             logger.info("Job %s state is %s", jobid, status)
             if status == 'SUCCEEDED':
                 completed_jobs.append(jobid)
