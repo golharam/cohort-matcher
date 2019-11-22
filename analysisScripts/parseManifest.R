@@ -26,6 +26,12 @@ manifest <- read.csv(manifestFile, header = TRUE)
 # Select 1 row for each sample 
 manifest <- manifest[manifest$VRUNIDSUFFIX==1,]
 
+# Get WGS Samples
+wgsSamples <- subset(manifest, ASSAYMETHOD=="WGS", 
+                     select=c("USUBJID", "SPECTYPE", "ASSAYMETHOD", "VRUNID", "VENDORNAME", "BMSPROJECTID"))
+wgsNormal <- subset(wgsSamples, grepl("NORMAL", SPECTYPE), select=c("USUBJID", "VRUNID"))
+wgsTumor <- subset(wgsSamples, grepl("TUMOR", SPECTYPE), select=c("USUBJID", "VRUNID"))
+
 # Get WES Samples
 wesSamples <- subset(manifest, ASSAYMETHOD=="WES", 
                      select=c("USUBJID", "SPECTYPE", "ASSAYMETHOD", "VRUNID", "VENDORNAME", "BMSPROJECTID"))
@@ -47,12 +53,18 @@ rnaTumor <- subset(rnaSamples, grepl("TUMOR", SPECTYPE), select=c("USUBJID", "VR
 #colnames(rnaSeqMatchedSamples) <- c("USUBJID", "RNASeq.Tumor.VRUNID", "RNASeq.Normal.VRUNID")
 
 # Print out sample counts
+message("WGS Tumor: ", dim(wgsTumor)[1])
+message("WGS Normal: ", dim(wgsNormal)[1])
+message("WGS Samples: ", dim(wgsSamples)[1])
+
 message("WES Tumor: ", dim(wesTumor)[1])
 message("WES Normal: ", dim(wesNormal)[1])
 message("WES Samples: ", dim(wesSamples)[1])
+
 message("RNA Tumor: ", dim(rnaTumor)[1])
 message("RNA Normal: ", dim(rnaNormal)[1])
 message("RNA Samples: ", dim(rnaSamples)[1])
+
 message("Total Samples: ", dim(manifest)[1])
 
 # Create the sample to subject file
@@ -60,12 +72,22 @@ sample_to_subject <- data.frame(sample=paste(manifest$VENDORNAME, manifest$VRUNI
 paste("Writing", sampleToSubjectFile)
 write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 
+bamsheet <- data.frame(sample=character(), bamfile=character(), reference=character())
+if (dim(wgsSamples)[1] > 0) {
+  wgsSamples$sample_name <- paste(wgsSamples$VENDORNAME, wgsSamples$VRUNID, sep="")
+  wgsSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wgsSamples$BMSPROJECTID, "/WGS/hg19/BAM/",
+                               wgsSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
+  wgs_bamsheet <- data.frame(sample=wgsSamples$sample_name, bamfile=wgsSamples$bamfile, reference="hg19")
+  bamsheet <- rbind(bamsheet, wgs_bamsheet)
+}
+
 # Create the WES bamsheet
 if (dim(wesSamples)[1] > 0) {
   wesSamples$sample_name <- paste(wesSamples$VENDORNAME, wesSamples$VRUNID, sep="")
   wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg19/BAM/",
                                wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
-  bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
+  wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
+  bamsheet <- rbind(bamsheet, wes_bamsheet)
 }
 
 # Create the RNA-Seq bamsheet and merge to wes bamsheet
