@@ -54,6 +54,18 @@ def main(argv):
     samples = readSamples(args.bamsheet)
     if samples is False:
         return -1
+
+    # Make sure VCF files are present before submitting jobs
+    vcfFiles = listFiles(args.s3_cache_folder, suffix='.vcf')
+    ok = True
+    for sample in samples:
+        vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
+        if vcfFile not in vcfFiles:
+            logger.error("%s not found.", vcfFile)
+            ok = False
+    if not ok:
+        return -1
+
     # We don't need the last sample in the list so let's remove it
     samples.pop()
 
