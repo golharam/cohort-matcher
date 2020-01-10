@@ -8,9 +8,6 @@ The basic workflow consists of:
 1. Construct a bamsheet, using analysisScripts/parseManifest.R
 2. Genotype all the samples to be compared.
    script: genotypeSamples.py
-3a. Collect genotype frequency information from VCF files
-   script: constructGenotypeFrequencyTable
-3b. Calculate p-value of similarity (Max's code -> data_full_compare)
 4. Compare the genotypes of each sample against the genotypes of all the other samples.
    script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
 5. Merge the results of the sample comparisons
