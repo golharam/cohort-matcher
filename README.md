@@ -2,7 +2,7 @@
 
 A workflow for comparing a cohort of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients/subjects by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
 
-# Algorithm #
+# Steps to run pipeline #
 
 The basic workflow consists of:
 1. Construct a bamsheet, using analysisScripts/parseManifest.R
@@ -21,6 +21,17 @@ The basic workflow consists of:
 
 6. Generate plots based on results and known patient-to-sample association.
 
+# Matching Algorithm #
+
+A minimum of 20 comparable SNPs are required to make a reliable comparison between samples (based on several peer-reviewed papers, references to follow).  We normally observe 100-2000 comparable SNPs between samples, due to sequencing coverage.
+
+Based on empirical evidence, two samples that originate from the same subject have a % similarity > 70% are considered a match.  We typically see >70% similarity for RNA-RNA or RNA-DNA, and > 90% (for DNA-DNA).  Two samples originating from different subjects have a % similarity < 50% (RNA-DNA or DNA-DNA). Anything in between is representative a cross-contamination.
+
+If a sample has 1 match, and the match comes from the same subject (as annotated in the sample to subject map), there is no swap.
+If a sample as more than 1 match, then:
+  - If all the matches are from the same subject, there is no swap.
+  - If any of the matches are from a different subject, then a swap exists.
+
 # How to run #
 
 Refer to the example/ directory
@@ -28,7 +39,6 @@ Refer to the example/ directory
 ## Output ##
 
 mergeResults.py creats meltedResults.txt, which contains the sample-to-sample comparisons.
-
 
 # Genome Reference #
 
