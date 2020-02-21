@@ -9,11 +9,14 @@ The basic workflow consists of:
    - This will create a bamsheet and sample-to-subject file, both required inputs to cohort-matcher.
    
 2. Genotype all the samples to be compared.
-   script: genotypeSamples.py
+  - script: genotypeSamples.py
+
 3. Compare the genotypes of each sample against the genotypes of all the other samples.
-   script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
+  - script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
+
 4. Merge the results of the sample comparisons
-   script: mergeResults.py
+  - script: mergeResults.py
+
 5. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
