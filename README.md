@@ -7,7 +7,7 @@ A workflow for comparing a cohort of [BAM files](https://samtools.github.io/hts-
 The basic workflow consists of:
 1. Construct a bamsheet, using analysisScripts/parseManifest.R
    - This will create a bamsheet and sample-to-subject file, both required inputs to cohort-matcher.
-   
+
 2. Genotype all the samples to be compared.
   - script: genotypeSamples.py
 
