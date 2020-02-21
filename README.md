@@ -1,7 +1,3 @@
-[![Build Status](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-build/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-[![Code Grade](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-grade/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-[![Coverage](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-coverage/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-
 # cohort-matcher #
 
 A workflow for comparing multiple cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
@@ -9,55 +5,22 @@ A workflow for comparing multiple cohorts of [BAM files](https://samtools.github
 # Algorithm #
 
 The basic workflow consists of:
-1. Genotype all the samples to be compared. (genotypeSamples.py)
-2. Compare the genotypes of each sample against the genotypes of all the other samples. (compareSamples.py which in turn uses compareGenotypes.py to compare a sample to reamining cohort of samples)
-3. Merge the results of the sample comparisons (mergeResults.py)
-4. Generate plots based on results and known patient-to-sample assocation.
+1. Construct a bamsheet, using analysisScripts/parseManifest.R
+2. Genotype all the samples to be compared.
+   script: genotypeSamples.py
+3. Compare the genotypes of each sample against the genotypes of all the other samples.
+   script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
+4. Merge the results of the sample comparisons
+   script: mergeResults.py
+5. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
 1.  Genotype each sample independently of each other
-2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+3.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
 
 # How to run #
 
-Pre-req:  Make input bamsheet
-
-Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
-
-P-1234.bamsheet.txt:
-
-| sample  | s3 path to bamfile | reference |
-| ------------- | ------------- | ----- |
-| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
-| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
-
-
-1.  Call genotypeSamples.py
-
-```
-genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
-
-2.  Call compareSamples.py
-
-```
-compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
-
-3.  Call mergeResults.py
-
-```
-mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
-```
-
-4.  Call findSwaps.R
-```
-Rscript analysisScripts/findSwaps.R
-```
-or via Docker
-```
-docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
-```
+Refer to the example/ directory
 
 ## Output ##
 
