@@ -17,11 +17,9 @@ The basic workflow consists of:
 4. Merge the results of the sample comparisons
   - script: mergeResults.py
 
-5. Generate plots based on results and known patient-to-sample assocation.
+5. Evalulate matches to determine observed sample to subject association.
 
-In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
-1.  Genotype each sample independently of each other
-3.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+6. Generate plots based on results and known patient-to-sample association.
 
 # How to run #
 
@@ -29,18 +27,12 @@ Refer to the example/ directory
 
 ## Output ##
 
-mergeResults.py created meltedResults.txt, which contains the sample-to-sample comparisons.
+mergeResults.py creats meltedResults.txt, which contains the sample-to-sample comparisons.
+
 
 # Genome Reference #
 
-The focus of cohort-matcher v2 is on human (hg19 / GRCh37, and hg38 / GRCh38). 
-Samples must be mapped against either: 
-
-1) hg19 or GRCh37
-
-OR
-
-2) hg38 or GRCh38
+cohort-matcher currently works on cohorts of samples mapped to hg19 and/or GRCh37.
 
 Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
 
@@ -52,6 +44,12 @@ Reference/Target Paths for hg19:
   - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
   - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
 
+## Optimization Notes ##
+
+In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
+1.  Genotype each sample independently of each other
+3.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
+
 ## Variant Callers ##
 
 (Require at least one)
@@ -60,7 +58,7 @@ Reference/Target Paths for hg19:
 * VarScan2 (requires Java and Samtools)
 * Freebayes
 
-Note: Cohort-matcher only supports Freebayes at this time.
+Note: Cohort-matcher only supports Freebayes at this time.  I haven't tested with GATK or VarScan2.
 
 ## Installation ##
 
