@@ -8,11 +8,11 @@ The basic workflow consists of:
 1. Construct a bamsheet, using analysisScripts/parseManifest.R
 2. Genotype all the samples to be compared.
    script: genotypeSamples.py
-4. Compare the genotypes of each sample against the genotypes of all the other samples.
+3. Compare the genotypes of each sample against the genotypes of all the other samples.
    script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
-5. Merge the results of the sample comparisons
+4. Merge the results of the sample comparisons
    script: mergeResults.py
-6. Generate plots based on results and known patient-to-sample assocation.
+5. Generate plots based on results and known patient-to-sample assocation.
 
 In order to efficiently, some steps are parallelized to reduce runtime.  Specifically:
 1.  Genotype each sample independently of each other
