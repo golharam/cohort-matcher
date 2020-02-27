@@ -41,6 +41,13 @@ Refer to the example/ directory
 mergeResults.py creats meltedResults.txt, which contains the sample-to-sample comparisons.
 findSwaps.R creates a circos plot of subjects, samples, and swaps, to give a quick visual representation of analysis.  It also creates matches.txt listing the best matched sample.
 
+To quickly find the samples that are swapped, load matches.txt in R and filter on swap column:
+```
+matches <- read.table("matches.txt", header=TRUE, sep="\t", stringsAsFactors=FALSE)
+swaps <- matches[matches$swap=="x",]
+swaps
+```
+
 # Genome Reference #
 
 cohort-matcher currently works on cohorts of samples mapped to hg19 and/or GRCh37.
