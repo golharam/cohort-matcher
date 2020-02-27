@@ -47,7 +47,7 @@ cm <- read.table(argv$meltedResults, header=TRUE, sep="\t", stringsAsFactors=FAL
 
 # Read sample to Subject map
 loginfo(paste("Reading", argv$sampleToSubject, sep=" "))
-sample_to_subject <- read.table(argv$sampleToSubject, header=FALSE, sep="\t", stringsAsFactors=FALSE,
+sample_to_subject <- read.table(argv$sampleToSubject, header=TRUE, sep="\t", stringsAsFactors=FALSE,
                                 na.strings = "")
 colnames(sample_to_subject) <- c("sample", "subject")
 
