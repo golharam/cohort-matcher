@@ -39,7 +39,7 @@ Refer to the example/ directory
 ## Output ##
 
 mergeResults.py creats meltedResults.txt, which contains the sample-to-sample comparisons.
-plotResults.R creates a circos plot of subjects, samples, and swaps, to give a quick visual representation of analysis.
+findSwaps.R creates a circos plot of subjects, samples, and swaps, to give a quick visual representation of analysis.  It also creates matches.txt listing the best matched sample.
 
 # Genome Reference #
 
