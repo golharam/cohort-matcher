@@ -22,7 +22,7 @@ p <- add_argument(p, "--installPackages", help="Install packages (Default: False
 
 p <- add_argument(p, "--meltedResults", help="Cohort-matcher melted results", default="meltedResults.txt")
 p <- add_argument(p, "--sampleToSubject", help="Sample to subject mapping", default="sampleToSubject.txt")
-p <- add_argument(p, "--outputFile", help="Output file to list swaps", default="swaps.txt")
+p <- add_argument(p, "--outputFile", help="Output file to list matches", default="matches.txt")
 
 p <- add_argument(p, "--circosFile", help="Output file for circos plot", default="circos.pdf")
 p <- add_argument(p, "--showSampleLabels", help="Show sample labels in circos plot (Default: False)", flag=TRUE)
