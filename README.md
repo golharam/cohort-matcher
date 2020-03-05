@@ -25,7 +25,9 @@ The basic workflow consists of:
 
 A minimum of 20 comparable SNPs are required to make a reliable comparison between samples (based on several peer-reviewed papers, references to follow).  We normally observe 100-2000 comparable SNPs between samples, due to sequencing coverage.
 
-Based on empirical evidence, two samples that originate from the same subject have a % similarity > 70% are considered a match.  We typically see >70% similarity for RNA-RNA or RNA-DNA, and > 90% (for DNA-DNA).  Two samples originating from different subjects have a % similarity < 50% (RNA-DNA or DNA-DNA). Anything in between is representative a cross-contamination.
+Based on empirical evidence, two samples that originate from the same subject have a % similarity > 70% are considered a match.  We typically see >70% similarity for RNA-RNA or RNA-DNA, and > 90% (for DNA-DNA).
+
+Two samples originating from different subjects have a % similarity < 50% (RNA-DNA or DNA-DNA). Anything in between is representative a cross-contamination.
 
 If a sample has 1 match, and the match comes from the same subject (as annotated in the sample to subject map), there is no swap.
 If a sample as more than 1 match, then:
