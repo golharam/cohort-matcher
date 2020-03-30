@@ -118,7 +118,7 @@ def main(argv):
     for counter, jobid in enumerate(jobs):
         status = ''
         while status != 'SUCCEEDED' and status != 'FAILED':
-            logger.info("[%d/%d] Checking job %s", counter+1, len(jobs),  jobid)
+            logger.info("[%d/%d] Checking job %s", counter+1, len(jobs), jobid)
             try:
                 response = batch.describe_jobs(jobs=[jobid])
                 status = response['jobs'][0]['status']
