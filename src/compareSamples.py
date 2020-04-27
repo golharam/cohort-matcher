@@ -2,8 +2,9 @@
 '''
 Script to compare genotypes
 
-Not every sample is going to have a meltedResults.txt. For a list of samples (sample1, ..., sampleN),
-an all v all nieve approach would require O(n^2) comparisons, but really, we can do this in O(n log(n)).
+Not every sample is going to have a meltedResults.txt. For a list of samples
+(sample1, ..., sampleN), an all v all nieve approach would require O(n^2) comparisons,
+but really, we can do this in O(n log(n)).
 
 For example, 5 samples, sample1, ..., sample 5:
 
@@ -32,8 +33,6 @@ from common import listFiles, readSamples, uploadFile
 __appname__ = 'compareSamples'
 __version__ = "0.2"
 
-logger = logging.getLogger(__appname__)
-
 def _run(cmd):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -46,8 +45,8 @@ def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s", __appname__, __version__)
-    logger.info(args)
+    logging.info("%s v%s", __appname__, __version__)
+    logging.info(args)
 
     batch = boto3.client('batch')
 
@@ -61,7 +60,7 @@ def main(argv):
     for sample in samples:
         vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
         if vcfFile not in vcfFiles:
-            logger.error("%s not found.", vcfFile)
+            logging.error("%s not found.", vcfFile)
             ok = False
     if not ok:
         return -1
@@ -85,20 +84,19 @@ def main(argv):
     for sample in samples:
         meltedResults = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
         if meltedResults not in meltedResultsFiles:
-            logger.info("Comparing genotype of %s to other samples", sample['name'])
+            logging.info("Comparing genotype of %s to other samples", sample['name'])
             if args.local:
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
                        "-s", sample['name'],
                        "--s3_cache_folder", args.s3_cache_folder]
                 if args.dry_run:
-                    logger.info("Would call %s", cmd)
+                    logging.info("Would call %s", cmd)
                 else:
                     response = _run(cmd)
             else:
                 if args.dry_run:
-                    logger.info("Would call batch.submit_job: compareGenotypes.py -s %s "
-                                "--s3_cache_folder %s",
-                                sample['name'], args.s3_cache_folder)
+                    logging.info("Would call batch.submit_job: compareGenotypes.py -s %s "
+                                 "--s3_cache_folder %s", sample['name'], args.s3_cache_folder)
                 else:
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample['name'],
                                                 jobQueue=args.job_queue,
@@ -110,33 +108,33 @@ def main(argv):
                                                                                 args.s3_cache_folder]})
                     jobId = response['jobId']
                     jobs.append(jobId)
-                logger.debug(response)
+                logging.debug(response)
 
-    logger.info("Submitted %s jobs", len(jobs))
+    logging.info("Submitted %s jobs", len(jobs))
     completed_jobs = []
     failed_jobs = []
     for counter, jobid in enumerate(jobs):
         status = ''
         while status != 'SUCCEEDED' and status != 'FAILED':
-            logger.info("[%d/%d] Checking job %s", counter+1, len(jobs), jobid)
+            logging.info("[%d/%d] Checking job %s", counter+1, len(jobs), jobid)
             try:
                 response = batch.describe_jobs(jobs=[jobid])
                 status = response['jobs'][0]['status']
             except botocore.exceptions.ClientError as err:
-                logger.error(err.response)
+                logging.error(err.response)
                 pass
 
-            logger.info("Job %s state is %s", jobid, status)
+            logging.info("Job %s state is %s", jobid, status)
             if status == 'SUCCEEDED':
                 completed_jobs.append(jobid)
             elif status == 'FAILED':
                 failed_jobs.append(jobid)
             else:
-                logger.info("Sleeping 60 secs")
+                logging.info("Sleeping 60 secs")
                 time.sleep(60)
 
-    logger.info("Successed: %s", len(completed_jobs))
-    logger.info("Failed: %s", len(failed_jobs))
+    logging.info("Successed: %s", len(completed_jobs))
+    logging.info("Failed: %s", len(failed_jobs))
 
 def parseArguments(argv):
     ''' Parse arguments '''
@@ -148,7 +146,7 @@ def parseArguments(argv):
 
     required_args = parser.add_argument_group("Required")
     required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
-    required_args.add_argument("-CD", "--s3_cache_folder", required=True, 
+    required_args.add_argument("-CD", "--s3_cache_folder", required=True,
                                help="Specify S3 path for cached VCF/TSV files")
 
     job_args = parser.add_argument_group("Optional")
