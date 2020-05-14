@@ -13,7 +13,7 @@ p <- arg_parser("cohort-matcher prereq")
 p <- add_argument(p, "--manifest", help="[Input] Manifest File", default="BMS-Manifest.csv")
 p <- add_argument(p, "--bamsheet", help="[Output] BAM sheet", default="bamsheet.txt")
 p <- add_argument(p, "--sampleToSubject", help="[Output] Sample to patient mapping", default="sampleToSubject.txt")
-p <- add_argument(p, "--reference" help="hg19/GRCh37ERCC or hg38/GRCh38ERCC", default="hg38")
+p <- add_argument(p, "--reference", help="hg19/GRCh37ERCC or hg38/GRCh38ERCC", default="hg38")
 argv <- parse_args(p)
 
 manifestFile <- argv$manifest
