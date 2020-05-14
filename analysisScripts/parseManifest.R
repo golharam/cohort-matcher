@@ -13,11 +13,13 @@ p <- arg_parser("cohort-matcher prereq")
 p <- add_argument(p, "--manifest", help="[Input] Manifest File", default="BMS-Manifest.csv")
 p <- add_argument(p, "--bamsheet", help="[Output] BAM sheet", default="bamsheet.txt")
 p <- add_argument(p, "--sampleToSubject", help="[Output] Sample to patient mapping", default="sampleToSubject.txt")
+p <- add_argument(p, "--reference" help="hg19/GRCh37ERCC or hg38/GRCh38ERCC", default="hg38")
 argv <- parse_args(p)
 
 manifestFile <- argv$manifest
 sampleToSubjectFile <- argv$sampleToSubject
 bamsheetFile <- argv$bamsheet
+reference <- argv$reference
 ###
 
 ### Read manifest file
@@ -75,30 +77,49 @@ write.table(sample_to_subject, file=sampleToSubjectFile, sep="\t", row.names=FAL
 bamsheet <- data.frame(sample=character(), bamfile=character(), reference=character())
 if (dim(wgsSamples)[1] > 0) {
   wgsSamples$sample_name <- paste(wgsSamples$VENDORNAME, wgsSamples$VRUNID, sep="")
-  wgsSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wgsSamples$BMSPROJECTID, "/WGS/hg19/BAM/",
-                               wgsSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
-  wgs_bamsheet <- data.frame(sample=wgsSamples$sample_name, bamfile=wgsSamples$bamfile, reference="hg19")
+  if (reference == "hg19") {
+    wgsSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wgsSamples$BMSPROJECTID, "/WGS/hg19/BAM/",
+                                 wgsSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
+    wgs_bamsheet <- data.frame(sample=wgsSamples$sample_name, bamfile=wgsSamples$bamfile, reference="hg19")
+  } else {
+	wgsSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wgsSamples$BMSPROJECTID, "/WGS/hg38/BAM/",
+								 wgsSamples$sample_name, ".sorted.dedup.realigned.recal.hg38.bam", sep="")
+    wgs_bamsheet <- data.frame(sample=wgsSamples$sample_name, bamfile=wgsSamples$bamfile, reference="hg38")
+  }
   bamsheet <- rbind(bamsheet, wgs_bamsheet)
 }
 
 # Create the WES bamsheet
 if (dim(wesSamples)[1] > 0) {
   wesSamples$sample_name <- paste(wesSamples$VENDORNAME, wesSamples$VRUNID, sep="")
-  wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg19/BAM/",
-                               wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
-  wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
+  if (reference == "hg19") {
+    wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg19/BAM/",
+                                 wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg19.bam", sep="")
+    wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
+  } else {
+    wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg38/BAM/",
+                                 wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg38.bam", sep="")
+    wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg38")
+  }
   bamsheet <- rbind(bamsheet, wes_bamsheet)
 }
 
 # Create the RNA-Seq bamsheet and merge to wes bamsheet
 if (dim(rnaSamples)[1] > 0) {
   rnaSamples$sample_name <- paste(rnaSamples$VENDORNAME, rnaSamples$VRUNID, sep="")
-  rnaSamples$bamfile <- paste("s3://bmsrd-ngs-results/", rnaSamples$BMSPROJECTID, "/bam/",
-                               rnaSamples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
-  rna_bamsheet <- data.frame(sample=rnaSamples$sample_name, bamfile=rnaSamples$bamfile, reference="GRCh37ERCC")
+  if (reference == "hg19") {
+    rnaSamples$bamfile <- paste("s3://bmsrd-ngs-results/", rnaSamples$BMSPROJECTID, "/bam/",
+                                rnaSamples$sample_name, ".GRCh37ERCC-ensembl75.decontaminated.genome.bam", sep="")
+    rna_bamsheet <- data.frame(sample=rnaSamples$sample_name, bamfile=rnaSamples$bamfile, reference="GRCh37ERCC")
+  } else {
+	rnaSamples$bamfile <- paste("s3://bmsrd-ngs-results/", rnaSamples$BMSPROJECTID, "/bam/",
+								rnaSamples$sample_name, ".GRCh38ERCC-ensembl91.decontaminated.genome.bam", sep="")
+    rna_bamsheet <- data.frame(sample=rnaSamples$sample_name, bamfile=rnaSamples$bamfile, reference="GRCh38ERCC")
+  }
   bamsheet <- rbind(bamsheet, rna_bamsheet)
 }
 
 # Write out the master bamsheet
 paste("Writing", bamsheetFile)
 write.table(bamsheet, file=bamsheetFile, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+
