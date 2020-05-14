@@ -10,27 +10,27 @@ from common import downloadFile, readSamples, uploadFile, generate_working_dir
 __appname__ = 'mergeResults'
 __version__ = "0.2"
 
-logger = logging.getLogger(__appname__)
+logging.getLogger(__appname__)
 
 def main(argv):
     ''' Main Entry Point '''
     args = parseArguments(argv)
     logging.basicConfig(level=args.log_level)
-    logger.info("%s v%s", __appname__, __version__)
-    logger.info(args)
+    logging.info("%s v%s", __appname__, __version__)
+    logging.info(args)
 
     samples = readSamples(args.bamsheet)
     # We don't need the last sample in the list so let's remove it
     samples.pop()
 
     working_dir = generate_working_dir(args.working_dir)
-    logger.info("Working in %s", working_dir)
+    logging.info("Working in %s", working_dir)
 
     localMeltedResultsFiles = []
     for i, sample in enumerate(samples):
         meltedResultFile = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
         f = "%s/%s.meltedResults.txt" % (working_dir, sample['name'])
-        logger.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
+        logging.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
         downloadFile(meltedResultFile, f)
         localMeltedResultsFiles.append(f)
 
@@ -38,8 +38,8 @@ def main(argv):
     with open(meltedResultsFile, 'w') as outfile:
         header_written = False
         for i, fname in enumerate(localMeltedResultsFiles):
-            logger.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname, 
-                        meltedResultsFile)
+            logging.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname,
+                         meltedResultsFile)
             with open(fname) as infile:
                 if header_written is False:
                     # Write complete file out
@@ -52,9 +52,9 @@ def main(argv):
                         outfile.write(line)
 
     s3_path = "%s/meltedResults.txt" % args.s3_cache_folder
-    logger.info("Uploading %s -> %s", meltedResultsFile, s3_path)
+    logging.info("Uploading %s -> %s", meltedResultsFile, s3_path)
     uploadFile(meltedResultsFile, s3_path)
-    logger.info("Done.")
+    logging.info("Done.")
 
 def parseArguments(argv):
     ''' Parse arguments '''
