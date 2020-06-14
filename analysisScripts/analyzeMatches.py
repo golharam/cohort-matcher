@@ -12,7 +12,7 @@ SUBJECT_TO_SAMPLE = dict()
 CM_SUBJECT_TO_SAMPLE = dict()
 NGSCHECKMATE_SUBJECT_TO_SAMPLE = dict()
 
-def readCohortMatcherMeltedResults(meltedResultsFile):
+def read_cohortmatcher_results(melted_results_file):
     '''
     Read the melted results file and generate a dict
     of subject to matched samples
@@ -20,96 +20,114 @@ def readCohortMatcherMeltedResults(meltedResultsFile):
     :param subjectToSample: subject to sample map
     :return: subject to sample map based on meltedResults.txt
     '''
-    logging.info("Reading %s", meltedResultsFile)
-    with open(meltedResultsFile, 'r') as f:
-        f.readline()    # skip header line
-        for line in f:
+    logging.info("Reading %s", melted_results_file)
+    with open(melted_results_file, 'r') as fin:
+        fin.readline()    # skip header line
+        for line in fin:
             line = line.rstrip('\r\n')
-            s1, s2, ns1, ns2, snps_cmp, fmatch, judgement = line.split('\t')
+            sample1, sample2, _, _, _, _, judgement = line.split('\t')
             if 'DIFFERENT' in judgement:
                 continue
             if 'INCONCLUSIVE' in judgement:
                 continue
-            subject1 = SAMPLE_TO_SUBJECT[s1]
-            subject2 = SAMPLE_TO_SUBJECT[s2]
+
+            subject1 = SAMPLE_TO_SUBJECT[sample1]
+            subject2 = SAMPLE_TO_SUBJECT[sample2]
+
             if subject1 not in CM_SUBJECT_TO_SAMPLE:
                 CM_SUBJECT_TO_SAMPLE[subject1] = []
-            CM_SUBJECT_TO_SAMPLE[subject1].append(s1)
             if subject2 not in CM_SUBJECT_TO_SAMPLE:
                 CM_SUBJECT_TO_SAMPLE[subject2] = []
-            CM_SUBJECT_TO_SAMPLE[subject2].append(s2)
 
-def readNGSCheckMateOutput(ngscheckmate_matchedoutput):
+            if sample1 not in CM_SUBJECT_TO_SAMPLE[subject1]:
+                CM_SUBJECT_TO_SAMPLE[subject1].append(sample1)
+            if sample2 not in CM_SUBJECT_TO_SAMPLE[subject2]:
+                CM_SUBJECT_TO_SAMPLE[subject2].append(sample2)
+
+def read_ngscheckmate_output(ngscheckmate_matchedoutput):
+    ''' Read NGS CheckMate output file '''
     logging.info("Reading %s", ngscheckmate_matchedoutput)
     if os.path.exists(ngscheckmate_matchedoutput) is False:
         logging.warn("%s not found.  Skipping", ngscheckmate_matchedoutput)
         return
-    with open(ngscheckmate_matchedoutput, 'r') as f:
-        f.readline()
-        for line in f:
+    with open(ngscheckmate_matchedoutput, 'r') as fin:
+        fin.readline()
+        for line in fin:
             line = line.rstrip('\r\n')
-            s1, status, s2, corr, depth = line.split('\t')
+            sample1, _, sample2, _, _ = line.split('\t')
             # s1 and s2 are the filename, so strip everything past the period
-            s1 = s1[0:s1.find('.')]
-            s2 = s2[0:s2.find('.')]
-            subject1 = SAMPLE_TO_SUBJECT[s1]
-            subject2 = SAMPLE_TO_SUBJECT[s2]
+            sample1 = sample1[0:sample1.find('.')]
+            sample2 = sample2[0:sample2.find('.')]
+
+            subject1 = SAMPLE_TO_SUBJECT[sample1]
+            subject2 = SAMPLE_TO_SUBJECT[sample2]
+
             if subject1 not in NGSCHECKMATE_SUBJECT_TO_SAMPLE:
                 NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject1] = []
-            NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject1].append(s1)
             if subject2 not in NGSCHECKMATE_SUBJECT_TO_SAMPLE:
                 NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject2] = []
-            NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject2].append(s2)
 
-def readSampleToSubject(sampleToSubjectFile):
+            if sample1 not in NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject1]:
+                NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject1].append(sample1)
+            if sample2 not in NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject2]:
+                NGSCHECKMATE_SUBJECT_TO_SAMPLE[subject2].append(sample2)
+
+def read_sample_to_subject(sample_to_subject_file):
     '''
     Read the sample to subject file and generate a dict
     of sample->subject and subject->sample
-    :param sampleToSubjectFile: 
+    :param sampleToSubjectFile: sample to subject file
     '''
-    logging.info("Reading %s", sampleToSubjectFile)
-    with open(sampleToSubjectFile, 'r') as f:
-        f.readline()    # skip header line
-        for line in f:
+    logging.info("Reading %s", sample_to_subject_file)
+    with open(sample_to_subject_file, 'r') as fin:
+        fin.readline()    # skip header line
+        for line in fin:
             line = line.rstrip('\r\n')
             sample, subject = line.split('\t')
             SAMPLE_TO_SUBJECT[sample] = subject
             if subject not in SUBJECT_TO_SAMPLE:
                 SUBJECT_TO_SAMPLE[subject] = []
+            if sample in SUBJECT_TO_SAMPLE[subject]:
+                logging.error("%s already in map", sample)
             SUBJECT_TO_SAMPLE[subject].append(sample)
     logging.debug("Subject to Sample Map: %s", SUBJECT_TO_SAMPLE)
 
-def writeSubjectToSample(mapDescription, subjectToSampleMap):
-    txt = "%s.txt" % mapDescription
+def write_subject_to_sample(map_description, subject_to_sample_map):
+    ''' Write subject to sample map '''
+    txt = "%s.txt" % map_description
     logging.info("Writing %s", txt)
-    with open(txt, 'w') as f:
-        for subject in sorted(subjectToSampleMap.keys()):
-            f.write("%s: %s\n" % (subject, subjectToSampleMap[subject]))
+    with open(txt, 'w') as fout:
+        for subject in sorted(subject_to_sample_map.keys()):
+            fout.write("%s: %s\n" % (subject, sorted(subject_to_sample_map[subject])))
 
-def doWork(args):
+def do_work(args):
+    ''' Main work function '''
     # 1. Read the sample to subject mapping and build a graph of
     # subject -> [samples]
-    readSampleToSubject(args.sample_to_subject)
+    read_sample_to_subject(args.sample_to_subject)
 
     # 2. Read meltedResults and build/write similar graph
-    readCohortMatcherMeltedResults(args.melted_results)
+    read_cohortmatcher_results(args.melted_results)
+    # Samples that do not match to anything are not reported, hence not included.
 
     # 2b. Read NGSCheckMate results
-    readNGSCheckMateOutput(args.ngscheckmate_matchedoutput)
+    read_ngscheckmate_output(args.ngscheckmate_matchedoutput)
 
     # 3. Write maps
-    writeSubjectToSample('expected', SUBJECT_TO_SAMPLE)
-    writeSubjectToSample('cohort-matcher-actual', CM_SUBJECT_TO_SAMPLE)
-    writeSubjectToSample('NGSCheckMate-actual', NGSCHECKMATE_SUBJECT_TO_SAMPLE)
+    write_subject_to_sample('expected', SUBJECT_TO_SAMPLE)
+    write_subject_to_sample('cohort-matcher-actual', CM_SUBJECT_TO_SAMPLE)
+    write_subject_to_sample('NGSCheckMate-actual', NGSCHECKMATE_SUBJECT_TO_SAMPLE)
 
 def main(argv):
-    args = parseArguments(argv)
+    ''' Main Entry Point '''
+    args = parse_arguments(argv)
     logging.basicConfig(level=args.log_level)
     logging.info("%s v%s", __appname__, __version__)
     logging.info(args)
-    doWork(args)
+    do_work(args)
 
-def parseArguments(argv):
+def parse_arguments(argv):
+    ''' Parse command-line arguments '''
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-l', '--log-level',
@@ -119,7 +137,7 @@ def parseArguments(argv):
     parser.add_argument('-v', '--version', action="version",
                         version=__version__)
 
-    parser.add_argument('-m', '--melted-results', 
+    parser.add_argument('-m', '--melted-results',
                         default='meltedResults.txt',
                         help="Melted Results")
     parser.add_argument('-n', '--ngscheckmate-matchedoutput',
