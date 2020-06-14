@@ -1,3 +1,7 @@
+'''
+This script parses Cohort-Matcher meltedResults output and compares
+to the subject to sample map.
+'''
 #!/usr/bin/env python
 import argparse
 import logging
