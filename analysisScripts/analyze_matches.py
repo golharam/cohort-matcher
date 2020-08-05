@@ -1,8 +1,8 @@
+#!/usr/bin/env python
 '''
 This script parses Cohort-Matcher meltedResults output and compares
 to the subject to sample map.
 '''
-#!/usr/bin/env python
 import argparse
 import logging
 import os
@@ -29,7 +29,7 @@ def read_cohortmatcher_results(melted_results_file):
         fin.readline()    # skip header line
         for line in fin:
             line = line.rstrip('\r\n')
-            sample1, sample2, _, _, _, _, judgement = line.split('\t')
+            sample1, sample2, ns1, ns2, snps, f_match, judgement = line.split('\t')
             if 'DIFFERENT' in judgement:
                 continue
             if 'INCONCLUSIVE' in judgement:
@@ -50,10 +50,10 @@ def read_cohortmatcher_results(melted_results_file):
 
 def read_ngscheckmate_output(ngscheckmate_matchedoutput):
     ''' Read NGS CheckMate output file '''
-    logging.info("Reading %s", ngscheckmate_matchedoutput)
     if os.path.exists(ngscheckmate_matchedoutput) is False:
         logging.warn("%s not found.  Skipping", ngscheckmate_matchedoutput)
         return
+    logging.info("Reading %s", ngscheckmate_matchedoutput)
     with open(ngscheckmate_matchedoutput, 'r') as fin:
         fin.readline()
         for line in fin:
@@ -98,6 +98,8 @@ def read_sample_to_subject(sample_to_subject_file):
 
 def write_subject_to_sample(map_description, subject_to_sample_map):
     ''' Write subject to sample map '''
+    if not subject_to_sample_map:
+        return
     txt = "%s.txt" % map_description
     logging.info("Writing %s", txt)
     with open(txt, 'w') as fout:

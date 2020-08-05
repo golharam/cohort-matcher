@@ -258,6 +258,9 @@ def main(argv):
             s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
             vcfFile = "%s/%s.vcf" % (working_dir, sample['name'])
             downloadFile(s3_vcfFile, vcfFile)
+            if not os.path.exists(vcfFile):
+                logger.error("Error downloading %s.  Aborting.", s3_vcfFile)
+                return -1
             tsvFile = vcfFile.replace('.vcf', '.tsv')
             VCFtoTSV(vcfFile, tsvFile)
             var_list2 = get_tsv_variants(tsvFile, args.dp_threshold)
@@ -275,7 +278,8 @@ def main(argv):
             fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
-    uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder, os.path.basename(meltedResultsFile)))
+    uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder,
+                                             os.path.basename(meltedResultsFile)))
 
     logger.info('Cleaning up working dir')
     os.remove(meltedResultsFile)
