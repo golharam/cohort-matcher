@@ -98,7 +98,7 @@ if (dim(wesSamples)[1] > 0) {
     wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
   } else {
     wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg38/BAM/",
-                                 wesSamples$sample_name, ".sorted.dedup.realigned.recal.hg38.bam", sep="")
+                                 wesSamples$sample_name, ".sorted.dedup.recal.hg38.bam", sep="")
     wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg38")
   }
   bamsheet <- rbind(bamsheet, wes_bamsheet)
