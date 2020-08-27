@@ -1,11 +1,14 @@
+'''
+Common functions
+'''
 import collections
-import boto3
-import botocore
 import logging
 import os
+import shutil
 import uuid
 
-logger = logging.getLogger(__name__)
+import botocore
+import boto3
 
 def downloadFile(srcFile, destFile):
     ''' Download file from S3 '''
@@ -14,7 +17,7 @@ def downloadFile(srcFile, destFile):
     try:
         s3.meta.client.download_file(bucket, key, destFile)
     except botocore.exceptions.ClientError as e:
-        logger.warn(e)
+        logging.warn(e)
 
 def exists(s3path):
     ''' Return true is s3path is an object, else false '''
@@ -74,24 +77,24 @@ def readSamples(sampleSheetFile):
     '''
     readSamples reads in a sampleSheetFile consisting of three columns:
     name, bamfile, reference
-    :param sampleSheetFile: tab-delimited file 
+    :param sampleSheetFile: tab-delimited file
     :return: list of {name, bam, reference} dictionaries
     '''
     if os.path.isfile(sampleSheetFile) is False:
-        logger.error("%s does not exist", sampleSheetFile)
+        logging.error("%s does not exist", sampleSheetFile)
         return False
-    logger.info("Reading %s", sampleSheetFile)
+    logging.info("Reading %s", sampleSheetFile)
     sampleNames = []
     samples = []
     with open(sampleSheetFile, 'r') as f:
         for line in f:
             line = line.rstrip('\r\n')
-            if len(line) == 0 or line.startswith('#'):
+            if not line or line.startswith('#'):
                 continue
 
             fields = line.split('\t')
             if len(fields) != 3:
-                logger.error("Expected 3 columns in samplesheet, but found %s", len(fields))
+                logging.error("Expected 3 columns in samplesheet, but found %s", len(fields))
                 return False
 
             sampleNames.append(fields[0])
@@ -101,11 +104,11 @@ def readSamples(sampleSheetFile):
             samples.append(sample)
     duplicates = [item for item, count in collections.Counter(sampleNames).items() if count > 1]
     if duplicates:
-        logger.error("Duplicate sampleids found in %s", sampleSheetFile)
+        logging.error("Duplicate sampleids found in %s", sampleSheetFile)
         for dup in duplicates:
-            logger.error(dup)
+            logging.error(dup)
         return False
-    logger.info("Read %d samples.", len(samples))
+    logging.info("Read %d samples.", len(samples))
     return samples
 
 def generate_working_dir(working_dir_base):
@@ -118,7 +121,7 @@ def generate_working_dir(working_dir_base):
     working_dir = os.path.join(working_dir_base, str(uuid.uuid4()))
     try:
         os.mkdir(working_dir)
-    except Exception as e:
+    except OSError:
         return working_dir_base
     return working_dir
 
@@ -130,5 +133,5 @@ def delete_working_dir(working_dir):
 
     try:
         shutil.rmtree(working_dir)
-    except Exception as e:
-        print ('Can\'t delete %s' % working_dir)
+    except OSError:
+        print ('Can\'t delete %s', working_dir)

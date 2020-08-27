@@ -4,12 +4,10 @@ PROJECTID=<insert project id here>
 
 # 1. Parse the manifest -> bamsheet.txt, sampleToSubject.txt
 source ~/workspace/NGS/BMS/env/bin/activate
-manifest download -p $PROJECTID
+manifest download -p $PROJECTID -o manifest.csv
 deactivate
 
-MANIFEST=<insert manifest file downloaded above>
-
-Rscript --vanilla ~/workspace/NGS/cohort-matcher/analysisScripts/parseManifest.R --manifest $MANIFEST
+Rscript --vanilla ~/workspace/NGS/cohort-matcher/analysisScripts/parseManifest.R --manifest manifest.csv
 
 # 2. Genotype samples
 source ~/workspace/NGS/cohort-matcher/env/bin/activate

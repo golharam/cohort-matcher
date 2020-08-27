@@ -6,11 +6,17 @@ library(plyr)
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   cohort_matcher_results <- "meltedResults.txt"
+  sample_to_subject <- "sampleToSubject.txt"
 } else {
   cohort_matcher_results <- args[1]
+  sample_to_subject <- args[2]
 }
-paste("Reading", cohort_matcher_results, sep=" ")
+paste("Reading", cohort_matcher_results, sep="\t")
 cm <- read.table(cohort_matcher_results, header=TRUE, sep="\t")
+
+paste("Reading", sample_to_subject, sep=" ")
+patients<-read.table(sample_to_subject,sep="\t",header=TRUE)
+colnames(patients) <- c("Sample", "Patient")
 
 # Set the parameters
 snp_threshold <- 150
@@ -55,15 +61,13 @@ capture.output(cm.maxcliques,file="maxcliques.txt")
 
 #Define how to get patients per clique
 checkIfClean<-function(samples) {
-patientPerClique<-unique(patients[patients$Sample %in%
-samples,'Patient'])
-if (length(patientPerClique)>1) { cliqt<-"mixed"} else
-{cliqt<-"clean"}
-return(c(cliqt,as.character(patientPerClique)))
+  patientPerClique<-unique(patients[patients$Sample %in% samples,'Patient'])
+  if (length(patientPerClique)>1) { cliqt<-"mixed"} else {cliqt<-"clean"}
+  return(c(cliqt,as.character(patientPerClique)))
 }
 
 #Get the patient info
-patients<-read.table("patientSheet.txt",sep="\t",head=TRUE)
+#patients<-read.table("patientSheet.txt",sep="\t",head=TRUE)
 patients.cnts<-count(patients,c('Patient'))
 paste("We have
 ",length(patients.cnts[patients.cnts$freq==1,c('Patient')]),
