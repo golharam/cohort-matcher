@@ -16,7 +16,7 @@ PROJECTID=<insert project id here>
 # python3 -m venv env
 
 # pre-4. Active virtual environment
-# env/bin/activate
+# source env/bin/activate
 
 # pre-5. Install BMS-NGS-Python package into virtual environment
 # python setup.py install
