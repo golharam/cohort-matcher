@@ -5,6 +5,7 @@ import collections
 import logging
 import os
 import shutil
+import tempfile
 import uuid
 
 import botocore
@@ -111,19 +112,18 @@ def readSamples(sampleSheetFile):
     logging.info("Read %d samples.", len(samples))
     return samples
 
-def generate_working_dir(working_dir_base):
+def generate_working_dir(working_dir_base=None):
     """
     Creates a unique working directory to combat job multitenancy
     :param working_dir_base: base working directory
-    :return: a unique subfolder in working_dir_base with a uuid
+    :return: a unique subfolder in working_dir_base
     """
-
-    working_dir = os.path.join(working_dir_base, str(uuid.uuid4()))
-    try:
-        os.mkdir(working_dir)
-    except OSError:
-        return working_dir_base
-    return working_dir
+    if os.path.isdir('/scratch'):
+        tmp_dir = tempfile.mkdtemp(dir="/scratch")
+    else:
+        tmp_dir = tempfile.mkdtemp()
+    logging.debug("Using tmp dir: %s", tmp_dir)
+    return tmp_dir
 
 def delete_working_dir(working_dir):
     """

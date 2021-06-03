@@ -23,7 +23,7 @@ def main(argv):
     # We don't need the last sample in the list so let's remove it
     samples.pop()
 
-    working_dir = generate_working_dir(args.working_dir)
+    working_dir = generate_working_dir()
     logging.info("Working in %s", working_dir)
 
     localMeltedResultsFiles = []
@@ -68,9 +68,6 @@ def parseArguments(argv):
     required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
     required_args.add_argument("-CD", "--s3_cache_folder", required=True,
                                help="Specify S3 path for cached meltedResults files")
-
-    parser.add_argument("-w", "--working_dir", required=False, default="/scratch",
-                        help="Local working directory")
 
     args = parser.parse_args(argv)
     return args
