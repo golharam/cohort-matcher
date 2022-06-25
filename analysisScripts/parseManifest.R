@@ -27,6 +27,7 @@ manifest <- read.csv(manifestFile, header = TRUE)
 
 # Select 1 row for each sample 
 manifest <- manifest[manifest$VRUNIDSUFFIX==1,]
+manifest <- manifest[manifest$QCFLAG=="P",]
 
 # Get WGS Samples
 wgsSamples <- subset(manifest, ASSAYMETHOD=="WGS", 
