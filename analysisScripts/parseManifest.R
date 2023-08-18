@@ -14,12 +14,18 @@ p <- add_argument(p, "--manifest", help="[Input] Manifest File", default="BMS-Ma
 p <- add_argument(p, "--bamsheet", help="[Output] BAM sheet", default="bamsheet.txt")
 p <- add_argument(p, "--sampleToSubject", help="[Output] Sample to patient mapping", default="sampleToSubject.txt")
 p <- add_argument(p, "--reference", help="hg19/GRCh37ERCC or hg38/GRCh38ERCC", default="hg38")
+p <- add_argument(p, "--wesBamExtension", help="old (*.sorted.dedup.recal.hg38.bam) or new (*.hg38.bam)", default="new")
 argv <- parse_args(p)
 
 manifestFile <- argv$manifest
 sampleToSubjectFile <- argv$sampleToSubject
 bamsheetFile <- argv$bamsheet
 reference <- argv$reference
+if (argv$wesBamExtension == 'new') {
+    wesBamExtension='.hg38.bam'
+} else {
+    wesBamExtension='.sorted.dedup.recal.hg38.bam'
+}
 ###
 
 ### Read manifest file
@@ -99,7 +105,7 @@ if (dim(wesSamples)[1] > 0) {
     wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg19")
   } else {
     wesSamples$bamfile <- paste("s3://bmsrd-ngs-results/", wesSamples$BMSPROJECTID, "/WES/hg38/BAM/",
-                                 wesSamples$sample_name, ".sorted.dedup.recal.hg38.bam", sep="")
+                                 wesSamples$sample_name, wesBamExtension, sep="")
     wes_bamsheet <- data.frame(sample=wesSamples$sample_name, bamfile=wesSamples$bamfile, reference="hg38")
   }
   bamsheet <- rbind(bamsheet, wes_bamsheet)
