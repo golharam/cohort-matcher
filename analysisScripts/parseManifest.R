@@ -14,18 +14,15 @@ p <- add_argument(p, "--manifest", help="[Input] Manifest File", default="BMS-Ma
 p <- add_argument(p, "--bamsheet", help="[Output] BAM sheet", default="bamsheet.txt")
 p <- add_argument(p, "--sampleToSubject", help="[Output] Sample to patient mapping", default="sampleToSubject.txt")
 p <- add_argument(p, "--reference", help="hg19/GRCh37ERCC or hg38/GRCh38ERCC", default="hg38")
-p <- add_argument(p, "--wesBamExtension", help="old (*.sorted.dedup.recal.hg38.bam) or new (*.hg38.bam)", default="new")
+p <- add_argument(p, "--wesBamExtension", help="set this to .sorted.dedup.recal.hg38.bam for older iWES outputs", default=".hg38.bam")
 argv <- parse_args(p)
 
 manifestFile <- argv$manifest
 sampleToSubjectFile <- argv$sampleToSubject
 bamsheetFile <- argv$bamsheet
 reference <- argv$reference
-if (argv$wesBamExtension == 'new') {
-    wesBamExtension='.hg38.bam'
-} else {
-    wesBamExtension='.sorted.dedup.recal.hg38.bam'
-}
+wesBamExtension <- argv$wesBamExtension
+
 ###
 
 ### Read manifest file
