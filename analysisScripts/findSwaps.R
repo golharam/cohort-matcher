@@ -34,11 +34,10 @@ rm(p)
 ###
 
 if (argv$installPackages) {
-  source("http://bioconductor.org/biocLite.R")
-  biocLite(c("circlize", "devtools"))
-  if (argv$canvasXpress) {
-    devtools::install_github('neuhausi/canvasXpress')
-  }
+    install.packages(c("circlize", "devtools"))
+    if (argv$canvasXpress) {
+        devtools::install_github('neuhausi/canvasXpress')
+    }
 }
 
 # Read cohort matcher results
@@ -111,6 +110,8 @@ for (sample in sample_to_subject$sample) {
 }
 sink()
 
+
+
 # Clean up
 rm(matched_sample, row_index, sample, subject1, subject2, swap)
 loginfo(paste("Writing results to", argv$outputFile, sep=" "))
@@ -122,11 +123,13 @@ matches <- data.frame(lapply(matches, as.character), stringsAsFactors = FALSE)
 # matches contain duplicate rows of (from_sample, to_sample) and (to_sample, from_sample).   
 # We need to remove these duplicates before plotting,
 # https://stackoverflow.com/questions/25297812/pair-wise-duplicate-removal-from-dataframe
+
 cols = c(1, 2, 3, 4)
 newdf = matches[,cols]
 for (i in 1:nrow(matches)){
-  newdf[i, ] = sort(matches[i,cols])
+    newdf[i, ] = sort(as.matrix(matches[i,cols]))
 }
+
 matches <- matches[!duplicated(newdf),]
 rm(cols, newdf)
 
