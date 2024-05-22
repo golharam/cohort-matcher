@@ -185,3 +185,21 @@ plotNumSNPsCompared <- function(x, ...) {
               lwid=c(1, 10, 1))
   }
 }
+
+plot_dendogram <- function(x, ...) {
+  # https://r-graph-gallery.com/dendrogram.html
+
+  # Dataset
+  #data <- matrix( sample(seq(1,2000),200), ncol = 10 )
+  #rownames(data) <- paste0("sample_" , seq(1,20))
+  #colnames(data) <- paste0("variable",seq(1,10))
+
+  # Euclidean distance
+  dist <- dist(x[, c(4:8)], diag = TRUE)
+
+  # Hierarchical Clustering with hclust
+  hc <- hclust(dist)
+
+  # Plot the result
+  plot(hc)
+}
