@@ -132,4 +132,4 @@ attribution.
 
 ## Contact
 
-[Ryan Golhar](ryan.golhar@bms.com)
+- Golhar, Ryan <Ryan.Golhar@bms.com>
