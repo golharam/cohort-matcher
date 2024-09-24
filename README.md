@@ -11,16 +11,21 @@ Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
 ## Steps to run pipeline
 
 The basic workflow consists of:
+
 1. Construct a bamsheet, using analysisScripts/parseManifest.R
+
    - This will create a bamsheet and sample-to-subject file, both required inputs to cohort-matcher.
 
 2. Genotype all the samples to be compared.
+
   - script: genotypeSamples.py
 
 3. Compare the genotypes of each sample against the genotypes of all the other samples.
+
   - script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples
 
 4. Merge the results of the sample comparisons
+
   - script: mergeResults.py
 
 5. Evalulate matches to determine observed sample to subject association.
