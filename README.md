@@ -81,6 +81,7 @@ Reference/Target Paths for GRCh37ERCC:
 - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
 
 Reference/Target Paths for hg19:
+
 - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
 - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
 
@@ -121,7 +122,7 @@ Cohort-matcher adds unit tests to test the python code.
 
 ## LICENSE
 
-The code is released under the Creative Commons by Attribution licence (http://creativecommons.org/licenses/by/4.0/).
+The code is released under the [Creative Commons by Attribution licence](http://creativecommons.org/licenses/by/4.0/).
 You are free to use and modify it for any purpose (including commercial), so long as you include appropriate
 attribution.
 
