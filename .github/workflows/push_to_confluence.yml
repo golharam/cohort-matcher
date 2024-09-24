@@ -3,7 +3,7 @@ name: Publish Markdown to Confluence
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
