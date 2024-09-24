@@ -109,7 +109,7 @@ git clone https://github.com/golharam/cohort-matcher
 pip install -r cohort-matcher/requirements.txt
 ```
 
-The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
+The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37).
 
 These VCF files also contain variants extracted from 1000 Genomes project which are all exonic and have high likelihood
 of switching between REF and ALT alleles (global allele frequency between 0.45 and 0.55). The only difference between
