@@ -14,6 +14,21 @@ In order to efficiently, some steps are parallelized to reduce runtime.  Specifi
 1.  Genotype each sample independently of each other
 2.  Compare a sample's genotype against all other samples (to create a sample's meltedResults file)
 
+## Installation ##
+
+```
+git clone https://github.com/golharam/cohort-matcher
+pip install -r cohort-matcher/requirements.txt
+```
+
+The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
+
+These VCF files also contain variants extracted from 1000 Genomes project which are all exonic and have high likelihood of switching between REF and ALT alleles (global allele frequency between 0.45 and 0.55). The only difference between them is the number of variants contained within.
+
+The repository also includes several BAM files which can be used for testing (under test_data directory), as well as the expected results for various settings.
+
+Cohort-matcher adds unit tests to test the python code.
+
 # How to run #
 
 Pre-req:  Make input bamsheet
@@ -89,21 +104,6 @@ Reference/Target Paths for hg19:
 * Freebayes
 
 Note: Cohort-matcher only supports Freebayes at this time.
-
-## Installation ##
-
-```
-git clone https://github.com/golharam/cohort-matcher
-pip install -r cohort-matcher/requirements.txt
-```
-
-The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
-
-These VCF files also contain variants extracted from 1000 Genomes project which are all exonic and have high likelihood of switching between REF and ALT alleles (global allele frequency between 0.45 and 0.55). The only difference between them is the number of variants contained within.
-
-The repository also includes several BAM files which can be used for testing (under test_data directory), as well as the expected results for various settings.
-
-Cohort-matcher adds unit tests to test the python code.
 
 # LICENSE #
 
