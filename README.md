@@ -1,7 +1,3 @@
-[![Build Status](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-build/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-[![Code Grade](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-grade/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-[![Coverage](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher/statusbadges-coverage/icon)](https://jenkins-ci.pri.bms.com:8443/job/cohort-matcher)
-
 # cohort-matcher #
 
 A workflow for comparing multiple cohorts of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
@@ -24,30 +20,30 @@ Pre-req:  Make input bamsheet
 
 Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
 
-P-1234.bamsheet.txt:
+bamsheet.txt:
 
 | sample  | s3 path to bamfile | reference |
 | ------------- | ------------- | ----- |
-| sample1 | s3://bmsrd-ngs-results/P-12345678-1234/RNA-Seq/bam/sample1.GRCh37ERCC-ensembl75.bam | GRCh37ERCC |
-| sample2 | s3://bmsrd-ngs-results/P-12345678-4567/WES/bam/sample2.hg19.bam | hg19 |
+| sample1 | s3://<s3bucket>/<path_to_sample_bam> | GRCh37ERCC |
+| sample2 | s3://<s3bucket>/<path_to_sample_bam> | hg19 |
 
 
 1.  Call genotypeSamples.py
 
 ```
-genotypeSamples.py -b P-1234.bamsheet.txt -o s3://bmsrd-ngs-results/P-1234/cohort-matcher
+genotypeSamples.py -b bamsheet.txt -o s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
 ```
 
 2.  Call compareSamples.py
 
 ```
-compareSamples.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+compareSamples.py -b bamsheet.txt -CD s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
 ```
 
 3.  Call mergeResults.py
 
 ```
-mergeResults.py -b P-1234.bamsheet.txt -CD s3://bmsrd-ngs-results/P-1234/cohort-matcher
+mergeResults.py -b bamsheet.txt -CD s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
 ```
 
 4.  Call findSwaps.R
@@ -56,7 +52,7 @@ Rscript analysisScripts/findSwaps.R
 ```
 or via Docker
 ```
-docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher 483421617021.dkr.ecr.us-east-1.amazonaws.com/cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
+docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
 ```
 
 ## Output ##
@@ -77,12 +73,12 @@ OR
 Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
 
 Reference/Target Paths for GRCh37ERCC:
-  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2
-  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
+  - s3://bucket/cohort-matcher/GRCh37ERCC.tar.bz2
+  - s3://bucket/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
   
 Reference/Target Paths for hg19:
-  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
-  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
+  - s3://bucket/cohort-matcher/hg19.tar.bz2
+  - s3://bucket/cohort-matcher/hg19.cohort-matcher.bed
 
 ## Variant Callers ##
 
