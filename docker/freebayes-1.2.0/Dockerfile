@@ -1,25 +1,55 @@
-FROM python:2.7
+FROM ubuntu:20.04
 
-RUN apt-get -y update && \
-    apt-get clean
+# Metadata
+LABEL maintainer="NGS Bioinformatics"
+LABEL description="Dockerfile for freebayes 1.2.0 - a Bayesian genetic variant detector"
+LABEL version="1.2.0"
 
-RUN git clone --recursive https://github.com/ekg/freebayes.git && cd /freebayes && git checkout 40155b407a4bead708aaafcadf7904854c411275
-WORKDIR /freebayes
-RUN make 
-RUN make install
-WORKDIR /
-RUN rm -rf /freebayes
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN git clone https://github.com/samtools/htslib.git
-WORKDIR /htslib
-RUN autoheader && autoconf && ./configure && make && make install
-WORKDIR /
-RUN rm -rf /htslib
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    cmake \
+    pkg-config \
+    python3 \
+    python3-pip \
+    zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    autoconf \
+    automake \
+    wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --recursive https://github.com/samtools/samtools.git
-WORKDIR /samtools
-RUN autoheader && autoconf -Wno-syntax && ./configure && make && make install
-WORKDIR /
-RUN rm -rf /samtools
+# Set up working directory
+WORKDIR /opt
 
-ENV LD_LIBRARY_PATH /usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
+# Clone freebayes repository and checkout version 1.2.0
+RUN git clone --recursive https://github.com/ekg/freebayes.git \
+    && cd freebayes \
+    && git checkout v1.2.0 \
+    && git submodule update --recursive
+
+# Build freebayes
+RUN cd /opt/freebayes \
+    && make \
+    && make install
+
+# Add freebayes to PATH
+ENV PATH="/opt/freebayes/bin:${PATH}"
+
+# Create a directory for data
+RUN mkdir -p /data
+
+# Set working directory to /data
+WORKDIR /data
+
+# Default command
+ENTRYPOINT ["freebayes"]
+CMD ["--help"]
