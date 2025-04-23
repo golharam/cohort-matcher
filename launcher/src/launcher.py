@@ -172,6 +172,21 @@ def wait_for_tasks(platform, samples, workflow_name):
 
     return samples
 
+def genotype_samples(samples):
+    ''' Genotype samples '''
+
+def compare_genotypes():
+    ''' Compare genotypes '''
+
+def merge_results():
+    ''' Merge results '''
+
+def find_swaps():
+    ''' Find swaps '''
+
+def generate_report():
+    ''' Generate report '''
+
 def do_work(args, platform, project):
     ''' Do the work of the launcher '''
     # Read the samplesheet
@@ -179,42 +194,33 @@ def do_work(args, platform, project):
 
     '''
     # 2. Genotype samples
-    source ~/workspace/NGS/cohort-matcher/env/bin/activate
     ~/workspace/NGS/cohort-matcher/src/genotypeSamples.py -b bamsheet.txt -o s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
+    '''
+    genotype_samples(samples)
 
+    '''
     # 3. Compare sample genotypes (generate per-sample meltedResults)
     ~/workspace/NGS/cohort-matcher/src/compareSamples.py -b bamsheet.txt -CD s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
+    '''
+    compare_genotypes()
 
+    '''
     # 4. Merge results
     ~/workspace/NGS/cohort-matcher/src/mergeResults.py -b bamsheet.txt -CD s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
+    '''
+    merge_results()
 
+    '''
     # 5. Find swaps
     Rscript --vanilla ~/workspace/NGS/cohort-matcher/analysisScripts/findSwaps.R
     '''
-    # Copy reference workflow(s) to project
-    workflows = copy_workflows(
-        pipeline_config.config[args.platform], platform, project)
-
-    # Copy reference data
-    reference_project = platform.get_project_by_name(
-        pipeline_config.config[args.platform]['reference_project'])
-
-    copy_reference_data(platform, pipeline_config.config[args.platform], reference_project, project)
-
-    # Run the per-sample workflow
-    samples = run_persample_workflow(samples, {'name': 'per_sample_workflow', 'id': workflows['workflow']}, platform, project)
-    samples = wait_for_tasks(platform, samples, 'per_sample_workflow')
+    find_swaps()
 
     '''
-    # Run merge workflow
-    merge_parameters = get_default_merge_parameters(args, platform, project)
-    merge_workflow = run_merge_workflow(samples, merge_parameters, platform, project)
-    merge_workflow = wait_for_tasks(merge_workflow, platform, project)
-
-    # Stage files for output
-    outputs = construct_output_files(merge_workflow, platform, project)
-    platform.stage_output_files(outputs, platform, project)
+    # 6. Generate report
     '''
+    generate_report()
+
 
 def main(argv):
     ''' Main Entry Point '''
