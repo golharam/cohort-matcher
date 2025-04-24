@@ -39,14 +39,12 @@ RUN git clone --recursive https://github.com/ekg/freebayes.git \
     && git checkout v1.3.9
 
 # Build freebayes
-RUN cd /opt/freebayes && \
-    meson build/ --buildtype release && \
+WORKDIR /opt/freebayes
+RUN meson build/ --buildtype release && \
     cd build && \
     ninja && \
-    ninja test
-
-# Install freebayes
-RUN cp freebayes /usr/local/bin/
+    ninja test && \
+    cp freebayes /usr/local/bin/freebayes
 
 # Default command
 ENTRYPOINT ["freebayes"]
