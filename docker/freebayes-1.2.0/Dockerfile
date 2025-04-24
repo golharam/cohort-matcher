@@ -31,11 +31,11 @@ RUN apt-get update && apt-get install -y \
 # Set up working directory
 WORKDIR /opt
 
-# Clone freebayes repository and checkout version 1.2.0
+# Clone freebayes repository and checkout version 1.3.9
 RUN git clone --recursive https://github.com/ekg/freebayes.git \
     && cd freebayes \
     && git checkout v1.3.9
-    
+
 # Build freebayes
 RUN cd /opt/freebayes && \
     meson build/ --buildtype release && \
