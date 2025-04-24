@@ -7,7 +7,7 @@ import logging
 import sys
 import time
 
-from cwl_platform import SUPPORTED_PLATFORMS, PlatformFactory
+#from cwl_platform import SUPPORTED_PLATFORMS, PlatformFactory
 
 import pipeline_config
 from samplesheet import read_samplesheet
