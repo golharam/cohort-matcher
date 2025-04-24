@@ -172,8 +172,13 @@ def wait_for_tasks(platform, samples, workflow_name):
 
     return samples
 
-def genotype_samples(samples):
+def genotype_samples(samples, platform):
     ''' Genotype samples '''
+    for sample in samples:
+        sample_id = sample['sample_id']
+        bamfile = sample['bamfile']
+        reference = sample['reference']
+
 
 def compare_genotypes():
     ''' Compare genotypes '''
@@ -196,7 +201,7 @@ def do_work(args, platform, project):
     # 2. Genotype samples
     ~/workspace/NGS/cohort-matcher/src/genotypeSamples.py -b bamsheet.txt -o s3://bmsrd-ngs-results/$PROJECTID/cohort-matcher
     '''
-    genotype_samples(samples)
+    genotype_samples(samples, platform)
 
     '''
     # 3. Compare sample genotypes (generate per-sample meltedResults)
