@@ -1,5 +1,7 @@
 FROM ubuntu:24.04
 
+MAINTAINER Ryan Golhar <ryan.golhar@bms.com>
+
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
