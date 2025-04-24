@@ -1,29 +1,30 @@
-FROM ubuntu:20.04
-
-# Metadata
-LABEL maintainer="NGS Bioinformatics"
-LABEL description="Dockerfile for freebayes 1.2.0 - a Bayesian genetic variant detector"
-LABEL version="1.2.0"
+FROM ubuntu:24.04
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
+    bc \
+    samtools \
+    vcftools \
+    parallel \
     git \
     cmake \
     pkg-config \
-    python3 \
-    python3-pip \
+    libseqlib-dev \
+    libvcflib-tools \
+    libvcflib-dev \
+    libhts3 libhts-dev \
+    libsmithwaterman-dev \
+    libfastahack-dev \
     zlib1g-dev \
     libbz2-dev \
     liblzma-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    autoconf \
-    automake \
-    wget \
+    liblzma-dev \
+    meson \
+    ninja-build \
+    libwfa2-0 libwfa2-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,22 +34,17 @@ WORKDIR /opt
 # Clone freebayes repository and checkout version 1.2.0
 RUN git clone --recursive https://github.com/ekg/freebayes.git \
     && cd freebayes \
-    && git checkout v1.2.0 \
-    && git submodule update --recursive
-
+    && git checkout v1.3.9
+    
 # Build freebayes
-RUN cd /opt/freebayes \
-    && make \
-    && make install
+RUN cd /opt/freebayes && \
+    meson build/ --buildtype release && \
+    cd build && \
+    ninja && \
+    ninja test
 
-# Add freebayes to PATH
-ENV PATH="/opt/freebayes/bin:${PATH}"
-
-# Create a directory for data
-RUN mkdir -p /data
-
-# Set working directory to /data
-WORKDIR /data
+# Install freebayes
+RUN cp freebayes /usr/local/bin/
 
 # Default command
 ENTRYPOINT ["freebayes"]
