@@ -1,0 +1,1 @@
+git+https://github.com/NGS360/PAML.git@v0.2.5#egg=cwl_platform
