@@ -34,9 +34,61 @@ If a sample as more than 1 match, then:
   - If all the matches are from the same subject, there is no swap.
   - If any of the matches are from a different subject, then a swap exists.
 
+## Installation ##
+
+```
+git clone https://github.com/golharam/cohort-matcher
+pip install -r cohort-matcher/requirements.txt
+```
+
+The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
+
+These VCF files also contain variants extracted from 1000 Genomes project which are all exonic and have high likelihood of switching between REF and ALT alleles (global allele frequency between 0.45 and 0.55). The only difference between them is the number of variants contained within.
+
+The repository also includes several BAM files which can be used for testing (under test_data directory), as well as the expected results for various settings.
+
+Cohort-matcher adds unit tests to test the python code.
+
 # How to run #
 
-Refer to the example/ directory
+Pre-req:  Make input bamsheet
+
+Construct a single 3 column tab-delimited text file consisting of sampleName, S3 path to the sample bamfile, and reference sample is mapped to (hg19 or GRCh37ERCC) for all the samples. For example:
+
+bamsheet.txt:
+
+| sample  | s3 path to bamfile | reference |
+| ------------- | ------------- | ----- |
+| sample1 | s3://<s3bucket>/<path_to_sample_bam> | GRCh37ERCC |
+| sample2 | s3://<s3bucket>/<path_to_sample_bam> | hg19 |
+
+
+1.  Call genotypeSamples.py
+
+```
+genotypeSamples.py -b bamsheet.txt -o s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
+```
+
+2.  Call compareSamples.py
+
+```
+compareSamples.py -b bamsheet.txt -CD s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
+```
+
+3.  Call mergeResults.py
+
+```
+mergeResults.py -b bamsheet.txt -CD s3://<s3bucket/<path-for-cohort-matcher-cache-and-results>
+```
+
+4.  Call findSwaps.R
+```
+Rscript analysisScripts/findSwaps.R
+```
+or via Docker
+```
+docker run -ti --rm -v $PWD:/work -w /work -v /home/ec2-user/NGS/cohort-matcher:/cohort-matcher cohort-matcher-r Rscript /cohort-matcher/analysisScripts/findSwaps.R
+```
 
 ## Output ##
 
@@ -57,12 +109,12 @@ cohort-matcher currently works on cohorts of samples mapped to hg19 and/or GRCh3
 Other combinations of references will not work.  In version 2, the chromosome map has been eliminated, and the VCF to TSV process removes the 'chr' chromosome prefix, if one exists, allowing all VCFs to be compared against each other.
 
 Reference/Target Paths for GRCh37ERCC:
-  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.tar.bz2
-  - s3://bmsrd-ngs-repo/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
+  - s3://bucket/cohort-matcher/GRCh37ERCC.tar.bz2
+  - s3://bucket/cohort-matcher/GRCh37ERCC.cohort-matcher.bed
   
 Reference/Target Paths for hg19:
-  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2
-  - s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed
+  - s3://bucket/cohort-matcher/hg19.tar.bz2
+  - s3://bucket/cohort-matcher/hg19.cohort-matcher.bed
 
 ## Optimization Notes ##
 
@@ -79,21 +131,6 @@ In order to efficiently, some steps are parallelized to reduce runtime.  Specifi
 * Freebayes
 
 Note: Cohort-matcher only supports Freebayes at this time.  I haven't tested with GATK or VarScan2.
-
-## Installation ##
-
-```
-git clone https://github.com/golharam/cohort-matcher
-pip install -r cohort-matcher/requirements.txt
-```
-
-The repository includes 3 VCF files which can be used for comparing human data (hg19/GRCh37). 
-
-These VCF files also contain variants extracted from 1000 Genomes project which are all exonic and have high likelihood of switching between REF and ALT alleles (global allele frequency between 0.45 and 0.55). The only difference between them is the number of variants contained within.
-
-The repository also includes several BAM files which can be used for testing (under test_data directory), as well as the expected results for various settings.
-
-Cohort-matcher adds unit tests to test the python code.
 
 # LICENSE #
 
