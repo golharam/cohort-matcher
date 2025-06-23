@@ -1,15 +1,18 @@
 # cohort-matcher #
 
-A workflow for comparing a cohort of [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients/subjects by counting genotype matches at common SNPs.  Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
+A workflow for comparing a cohort of samples [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf) to determine if they contain reads sequenced from the same samples or patients/subjects by counting genotype matches at common SNPs. Cohort-matcher is an efficient, cloud-enabled variation of BAM-matcher.
 
 # Steps to run pipeline #
 
 The basic workflow consists of:
-1. Construct a bamsheet, using analysisScripts/parseManifest.R
-   - This will create a bamsheet and sample-to-subject file, both required inputs to cohort-matcher.
+1. Construct a bamsheet (using analysisScripts/parseManifest.R)
+   - This will create a "bamsheet", which consists of a subject id, sample id, bamfile path, genome reference.
+   - This file contains a header line.
 
 2. Genotype all the samples to be compared.
   - script: genotypeSamples.py
+  - If genome reference is not provided, a s3 path must be provided on the command line, and all samples must be mapped to provided reference.
+  - If genome reference is provided in the bamsheet, then samples mapped to different versions of the same genome can be used (e.g. hg38 or GRCh38)
 
 3. Compare the genotypes of each sample against the genotypes of all the other samples.
   - script: compareSamples.py uses compareGenotypes.py to compare a sample to remaining cohort of samples

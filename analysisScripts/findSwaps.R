@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
 ### Author: Ryan Golhar <ryan.golhar@bms.com>
 
-### This script finds sample swaps based on genotyping from cohort-matcher. 
+### This script finds sample swaps based on genotyping from cohort-matcher.
 ### Inputs:
 ### 1.  Cohort-matcher melted results
-### 2.  Sample to Subject (This should be a master list of all samples mapping to subject)
+### 2.  Bamsheet
 ###
 
 ### Install required packages to run
