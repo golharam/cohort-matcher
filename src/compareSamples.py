@@ -91,7 +91,7 @@ def main(argv):
                        "-s", sample['sample_id'],
                        "--s3_cache_folder", args.s3_cache_folder]
                 if args.dry_run:
-                    logging.info("Would call %s", cmd)
+                    logging.info(cmd)
                 else:
                     response = _run(cmd)
             else:
