@@ -20,9 +20,16 @@ The basic workflow consists of:
 4. Merge the results of the sample comparisons
   - script: mergeResults.py
 
-5. Evalulate matches to determine observed sample to subject association.
+5. Generate circos plot of subjects & samples
 
-6. Generate plots based on results and known patient-to-sample association.
+a. Implementation based on circlize: https://github.com/jokergoo/circlize
+b. Implementation based on pyCirclize: https://github.com/moshi4/pyCirclize
+  - script: work/cohort-matcher/analysisScripts/pycircos.py
+
+
+6. Evalulate matches to determine observed sample to subject association.
+
+7. Generate plots based on results and known patient-to-sample association.
 
 # Matching Algorithm #
 
