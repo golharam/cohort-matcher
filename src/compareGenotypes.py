@@ -12,10 +12,12 @@ import csv
 from fisher import pvalue
 import vcf
 
-from common import downloadFile, uploadFile, readSamples, generate_working_dir, delete_working_dir
+from genotypeSamples import read_samples
+
+from common import downloadFile, uploadFile, generate_working_dir, delete_working_dir
 
 __appname__ = 'compareGenotypes'
-__version__ = "0.2"
+__version__ = "0.3"
 
 logger = logging.getLogger(__appname__)
 
@@ -213,15 +215,15 @@ def main(argv):
     working_dir = generate_working_dir(args.working_dir)
     logger.info("Working in %s", working_dir)
 
-    sampleName = args.sample
+    sample_name = args.sample
 
     # Download and read the bamsheet from the s3 cache directory
     downloadFile("%s/bamsheet.txt" % args.s3_cache_folder, "%s/bamsheet.txt" % working_dir)
     # Determine the current sample index in the list of samples
-    samples = readSamples("%s/bamsheet.txt" % working_dir)
+    samples = read_samples("%s/bamsheet.txt" % working_dir)
     sample_index = -1
     for i, sample in enumerate(samples):
-        if sample['name'] == sampleName:
+        if sample['sample_id'] == sample_name:
             sample_index = i
             break
     if sample_index == -1:
@@ -229,42 +231,42 @@ def main(argv):
         return -1
 
     # Get the list of variants in the reference sample
-    s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sampleName)
-    vcfFile = "%s/%s.vcf" % (working_dir, sampleName)
-    downloadFile(s3_vcfFile, vcfFile)
-    if os.path.exists(vcfFile):
-        tsvFile = "%s/%s.tsv" % (working_dir, sampleName)
-        VCFtoTSV(vcfFile, tsvFile)
+    s3_vcf_file = "%s/%s.vcf" % (args.s3_cache_folder, sample_name)
+    vcf_file = "%s/%s.vcf" % (working_dir, sample_name)
+    downloadFile(s3_vcf_file, vcf_file)
+    if os.path.exists(vcf_file):
+        tsvFile = "%s/%s.tsv" % (working_dir, sample_name)
+        VCFtoTSV(vcf_file, tsvFile)
         if os.path.exists(tsvFile):
             var_list = get_tsv_variants(tsvFile, args.dp_threshold)
             os.remove(tsvFile)
         else:
-            logger.error("Failed to convert VCF to TSV, %s -> %s", vcfFile, tsvFile)
+            logger.error("Failed to convert VCF to TSV, %s -> %s", vcf_file, tsvFile)
             return -1
-        os.remove(vcfFile)
+        os.remove(vcf_file)
     else:
-        logger.error("Failed to download %s", s3_vcfFile)
+        logger.error("Failed to download %s", s3_vcf_file)
         return -1
 
-    meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sampleName)
+    meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sample_name)
     with open(meltedResultsFile, "w") as fout:
         fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
             logger.info("[%d/%d] Comparing %s - %s", sample_index+1, len(samples),
-                        sampleName, sample['name'])
+                        sample_name, sample['sample_id'])
 
-            s3_vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
-            vcfFile = "%s/%s.vcf" % (working_dir, sample['name'])
-            downloadFile(s3_vcfFile, vcfFile)
-            if not os.path.exists(vcfFile):
-                logger.error("Error downloading %s.  Aborting.", s3_vcfFile)
+            s3_vcf_file = "%s/%s.vcf" % (args.s3_cache_folder, sample['sample_id'])
+            vcf_file = "%s/%s.vcf" % (working_dir, sample['sample_id'])
+            downloadFile(s3_vcf_file, vcf_file)
+            if not os.path.exists(vcf_file):
+                logger.error("Error downloading %s.  Aborting.", s3_vcf_file)
                 return -1
-            tsvFile = vcfFile.replace('.vcf', '.tsv')
-            VCFtoTSV(vcfFile, tsvFile)
+            tsvFile = vcf_file.replace('.vcf', '.tsv')
+            VCFtoTSV(vcf_file, tsvFile)
             var_list2 = get_tsv_variants(tsvFile, args.dp_threshold)
-            os.remove(vcfFile)
+            os.remove(vcf_file)
             os.remove(tsvFile)
 
             # compare the genotypes
@@ -275,7 +277,7 @@ def main(argv):
             fm = '%.4f' % results['frac_common']
             tc = '%d' % results['total_compared']
             j = results['short_judgement']
-            fout.write('\t'.join([sampleName, sample['name'], n1, n2, tc, fm, j]) + "\n")
+            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder,

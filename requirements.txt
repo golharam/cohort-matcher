@@ -1,4 +1,4 @@
 boto3
 fisher
 pandas
-pyvcf
+pyvcf3

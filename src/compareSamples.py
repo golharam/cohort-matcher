@@ -28,10 +28,11 @@ import sys
 import boto3
 import botocore
 
-from common import listFiles, readSamples, uploadFile
+from genotypeSamples import read_samples
+from common import listFiles, uploadFile
 
 __appname__ = 'compareSamples'
-__version__ = "0.2"
+__version__ = "0.3"
 
 def _run(cmd):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -50,17 +51,17 @@ def main(argv):
 
     batch = boto3.client('batch')
 
-    samples = readSamples(args.bamsheet)
+    samples = read_samples(args.bamsheet)
     if samples is False:
         return -1
 
     # Make sure VCF files are present before submitting jobs
-    vcfFiles = listFiles(args.s3_cache_folder, suffix='.vcf')
+    vcf_files = listFiles(args.s3_cache_folder, suffix='.vcf')
     ok = True
     for sample in samples:
-        vcfFile = "%s/%s.vcf" % (args.s3_cache_folder, sample['name'])
-        if vcfFile not in vcfFiles:
-            logging.error("%s not found.", vcfFile)
+        vcf_file = "%s/%s.vcf" % (args.s3_cache_folder, sample['sample_id'])
+        if vcf_file not in vcf_files:
+            logging.error("%s not found.", vcf_file)
             ok = False
     if not ok:
         return -1
@@ -70,9 +71,9 @@ def main(argv):
 
     # Get a list of meltedResults files
     if args.force is True:
-        meltedResultsFiles = []
+        melted_results_files = []
     else:
-        meltedResultsFiles = listFiles(args.s3_cache_folder, suffix='.meltedResults.txt')
+        melted_results_files = listFiles(args.s3_cache_folder, suffix='.meltedResults.txt')
 
     # Upload the bamsheet to the cache directory (because each job will need to determine
     # what samples to compare against based on its order in the bamsheet)
@@ -82,28 +83,29 @@ def main(argv):
     response = None
     jobs = []
     for sample in samples:
-        meltedResults = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
-        if meltedResults not in meltedResultsFiles:
-            logging.info("Comparing genotype of %s to other samples", sample['name'])
+        melted_results = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['sample_id'])
+        if melted_results not in melted_results_files:
+            logging.info("Comparing genotype of %s to other samples", sample['sample_id'])
             if args.local:
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
-                       "-s", sample['name'],
-                       "--s3_cache_folder", args.s3_cache_folder]
+                       "-s", sample['sample_id'],
+                       "--s3_cache_folder", args.s3_cache_folder,
+                       "--working_dir", args.working_dir]
                 if args.dry_run:
-                    logging.info("Would call %s", cmd)
+                    logging.info(cmd)
                 else:
                     response = _run(cmd)
             else:
                 if args.dry_run:
                     logging.info("Would call batch.submit_job: compareGenotypes.py -s %s "
-                                 "--s3_cache_folder %s", sample['name'], args.s3_cache_folder)
+                                 "--s3_cache_folder %s", sample['sample_id'], args.s3_cache_folder)
                 else:
-                    response = batch.submit_job(jobName='compareGenotypes-%s' % sample['name'],
+                    response = batch.submit_job(jobName='compareGenotypes-%s' % sample['sample_id'],
                                                 jobQueue=args.job_queue,
                                                 jobDefinition=args.job_definition,
                                                 containerOverrides={'vcpus': 1,
                                                                     'command': ['/compareGenotypes.py',
-                                                                                '-s', sample['name'],
+                                                                                '-s', sample['sample_id'],
                                                                                 '--s3_cache_folder',
                                                                                 args.s3_cache_folder]})
                     jobId = response['jobId']
@@ -152,13 +154,19 @@ def parseArguments(argv):
     job_args = parser.add_argument_group("Optional")
     job_args.add_argument('-f', '--force', action="store_true", default=False,
                           help="Force re-run")
+
+
     job_args = parser.add_argument_group("AWS Batch Job Settings")
-    job_args.add_argument('--local', action="store_true", default=False,
-                          help="Run locally instead of in AWS Batch")
     job_args.add_argument('-q', "--job-queue", action="store", default="ngs-job-queue",
                           help="AWS Batch Job Queue")
     job_args.add_argument('-j', '--job-definition', action="store", default="cohort-matcher:2",
                           help="AWS Batch Job Definition")
+
+    job_args = parser.add_argument_group("Local Execution Settings")
+    job_args.add_argument('--local', action="store_true", default=False,
+                          help="Run locally instead of in AWS Batch")
+    job_args.add_argument('--working_dir', type=str, default='/scratch')
+
     args = parser.parse_args(argv)
     return args
 

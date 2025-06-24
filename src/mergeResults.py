@@ -5,12 +5,23 @@ Script to merge results of compareSamples.py/compareGenotypes.py.
 import argparse
 import logging
 import sys
-from common import downloadFile, readSamples, uploadFile, generate_working_dir
+from genotypeSamples import read_samples
+from common import downloadFile, uploadFile, generate_working_dir
 
 __appname__ = 'mergeResults'
 __version__ = "0.2"
 
 logging.getLogger(__appname__)
+
+def download_melted_results(samples, working_dir, s3_cache_folder):
+    localMeltedResultsFiles = []
+    for i, sample in enumerate(samples):
+        meltedResultFile = "%s/%s.meltedResults.txt" % (s3_cache_folder, sample['sample_id'])
+        f = "%s/%s.meltedResults.txt" % (working_dir, sample['sample_id'])
+        logging.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
+        downloadFile(meltedResultFile, f)
+        localMeltedResultsFiles.append(f)
+    return localMeltedResultsFiles
 
 def main(argv):
     ''' Main Entry Point '''
@@ -19,37 +30,38 @@ def main(argv):
     logging.info("%s v%s", __appname__, __version__)
     logging.info(args)
 
-    samples = readSamples(args.bamsheet)
+    samples = read_samples(args.bamsheet)
+    
+    # Create a sample-to-subject map
+    sample_to_subject = {}
+    for sample in samples:
+        sample_to_subject[sample['sample_id']] = sample['subject_id']
+
     # We don't need the last sample in the list so let's remove it
     samples.pop()
 
     working_dir = generate_working_dir(args.working_dir)
     logging.info("Working in %s", working_dir)
 
-    localMeltedResultsFiles = []
-    for i, sample in enumerate(samples):
-        meltedResultFile = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['name'])
-        f = "%s/%s.meltedResults.txt" % (working_dir, sample['name'])
-        logging.info("[%d/%d] Downloading %s -> %s", i+1, len(samples), meltedResultFile, f)
-        downloadFile(meltedResultFile, f)
-        localMeltedResultsFiles.append(f)
+    localMeltedResultsFiles = download_melted_results(samples, working_dir, args.s3_cache_folder)
 
     meltedResultsFile = "meltedResults.txt"
     with open(meltedResultsFile, 'w') as outfile:
-        header_written = False
+        # Write the header
+        outfile.write('\t'.join(['Subject1', 'Sample1', 'Subject2', 'Sample2', 'n_S1', 'n_S2', 'SNPs_Compared', 'Fraction_Match', 'Judgement', 'Swap']) + "\n")
+        
         for i, fname in enumerate(localMeltedResultsFiles):
             logging.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname,
                          meltedResultsFile)
             with open(fname) as infile:
-                if header_written is False:
-                    # Write complete file out
-                    outfile.write(infile.read())
-                    header_written = True
-                else:
-                    # Skip first line and write out rest
-                    next(infile)
-                    for line in infile:
-                        outfile.write(line)
+                # Skip the header line
+                next(infile)
+                for line in infile:
+                    sample1, sample2, n_s1, n_s2, snps_compared, fraction_match, judgement = line.strip().split('\t')
+                    subject1 = sample_to_subject[sample1]
+                    subject2 = sample_to_subject[sample2]
+                    swap = 'x' if subject1 != subject2 and 'SAME' in judgement else ''
+                    outfile.write('\t'.join([subject1, sample1, subject2, sample2, n_s1, n_s2, snps_compared, fraction_match, judgement, swap]) + "\n")
 
     s3_path = "%s/meltedResults.txt" % args.s3_cache_folder
     logging.info("Uploading %s -> %s", meltedResultsFile, s3_path)
