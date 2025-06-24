@@ -4,8 +4,8 @@
 library(argparser, quietly=TRUE)
 p <- arg_parser("plot_snps.R")
 
-p <- add_argument(p, "--meltedResults", default = "meltedResults.txt")
-p <- add_argument(p, "--bamsheet", default = "bamsheet.txt")
+p <- add_argument(p, "--meltedResults", help = "Cohort-matcher melted results", default = "meltedResults.txt")
+p <- add_argument(p, "--bamsheet", help = "Cohort-matcher bamsheet", default = "bamsheet.txt")
 
 argv <- parse_args(p)
 rm(p)

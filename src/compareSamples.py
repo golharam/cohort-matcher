@@ -89,7 +89,8 @@ def main(argv):
             if args.local:
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
                        "-s", sample['sample_id'],
-                       "--s3_cache_folder", args.s3_cache_folder]
+                       "--s3_cache_folder", args.s3_cache_folder,
+                       "--working_dir", args.working_dir]
                 if args.dry_run:
                     logging.info(cmd)
                 else:
@@ -153,13 +154,19 @@ def parseArguments(argv):
     job_args = parser.add_argument_group("Optional")
     job_args.add_argument('-f', '--force', action="store_true", default=False,
                           help="Force re-run")
+
+
     job_args = parser.add_argument_group("AWS Batch Job Settings")
-    job_args.add_argument('--local', action="store_true", default=False,
-                          help="Run locally instead of in AWS Batch")
     job_args.add_argument('-q', "--job-queue", action="store", default="ngs-job-queue",
                           help="AWS Batch Job Queue")
     job_args.add_argument('-j', '--job-definition', action="store", default="cohort-matcher:2",
                           help="AWS Batch Job Definition")
+
+    job_args = parser.add_argument_group("Local Execution Settings")
+    job_args.add_argument('--local', action="store_true", default=False,
+                          help="Run locally instead of in AWS Batch")
+    job_args.add_argument('--working_dir', type=str, default='/scratch')
+
     args = parser.parse_args(argv)
     return args
 
