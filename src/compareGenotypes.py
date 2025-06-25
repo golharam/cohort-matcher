@@ -41,24 +41,21 @@ def is_subset(hom_gt, het_gt):
 
 def compareGenotypes(var_list, var_list2, intersection):
     ''' Compare genotypes of two samples '''
-    ct_common = 0
-    comm_hom_ct = 0
-    comm_het_ct = 0
-    ct_diff = 0
-    diff_hom_ct = 0
-    diff_het_ct = 0
-    diff_1sub2_ct = 0
-    diff_hom_het_ct = 0
+    ct_common = 0           # of common genotypes
+    comm_hom_ct = 0         # of common homozygote genotypes
+    comm_het_ct = 0         # of common heterozygote genotypes
+
+    ct_diff = 0             # of different genotypes
+    diff_hom_ct = 0         # of different homozygote genotypes
+    diff_het_ct = 0         # of different heterozygote genotypes
+
+    diff_1sub2_ct = 0       # of genotypes in sample 1 where sample1 is hom and sample2 is het and sample1 gt could be part of sample2 het genotype
+    diff_hom_het_ct = 0     # of genotypes where sample1 is hom and not a subset of sample2 genotype
     diff_2sub1_ct = 0
     diff_het_hom_ct = 0
 
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
-        #if alternate_chroms is not None:
-        #    bits = pos_.split('\t')
-        #    gt2 = var_list2[def_to_alt[bits[0]] + "\t" + bits[1]]['GT']
-            #gt2 = def_to_alt[pos_]
-        #else:
         gt2 = var_list2[pos_]['GT']
 
         # if genotypes are the same
@@ -68,9 +65,6 @@ def compareGenotypes(var_list, var_list2, intersection):
                 comm_hom_ct += 1
             else:
                 comm_het_ct += 1
-
-            # P-Value calc
-            bits = pos_.split('\t')
         else:
             ct_diff += 1
             # both are hom and different
@@ -95,9 +89,9 @@ def compareGenotypes(var_list, var_list2, intersection):
                 print(gt1, gt2)
                 exit(1)
 
-    total_compared = ct_common + ct_diff
-    frac_common_plus = 0
-    frac_common = 0
+    total_compared = ct_common + ct_diff    # Total genotypes compared
+    frac_common = 0                         # Fraction in common
+    frac_common_plus = 0                    # Fraction in common including max subset
     if total_compared > 0:
         frac_common = float(ct_common)/total_compared
         frac_common_plus = float(ct_common + max(diff_2sub1_ct,
