@@ -82,10 +82,10 @@ def main(argv):
 
     response = None
     jobs = []
-    for sample in samples:
+    for idx, sample in enumerate(samples):
         melted_results = "%s/%s.meltedResults.txt" % (args.s3_cache_folder, sample['sample_id'])
         if melted_results not in melted_results_files:
-            logging.info("Comparing genotype of %s to other samples", sample['sample_id'])
+            logging.info("[%d/%d] Comparing genotype of %s to other samples", idx+1, len(samples), sample['sample_id'])
             if args.local:
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
                        "-s", sample['sample_id'],

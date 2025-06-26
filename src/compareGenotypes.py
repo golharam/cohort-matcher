@@ -100,6 +100,7 @@ def compareGenotypes(var_list, var_list2, intersection):
     # test of allele-specific genotype subsets
     allele_subset = ""
     sub_sum = diff_1sub2_ct + diff_2sub1_ct
+    pv_ = 0
     # don't bother if fewer than 10
     if sub_sum > 10:
         pv_set = pvalue(diff_1sub2_ct, diff_2sub1_ct, ct_diff/2, ct_diff/2)
@@ -117,6 +118,7 @@ def compareGenotypes(var_list, var_list2, intersection):
     results['ct_common'] = ct_common
     results['frac_common'] = frac_common
     results['frac_common_plus'] = frac_common_plus
+    results['pv'] = pv_
     results['comm_hom_ct'] = comm_hom_ct
     results['comm_het_ct'] = comm_het_ct
     results['ct_diff'] = ct_diff
@@ -244,7 +246,7 @@ def main(argv):
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sample_name)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tFraction_Match_Plus\tPV\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -268,10 +270,12 @@ def main(argv):
             results = compareGenotypes(var_list, var_list2, intersection)
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
-            fm = '%.4f' % results['frac_common']
             tc = '%d' % results['total_compared']
+            fm = '%.4f' % results['frac_common']
+            fmp = '%.4f' % results['frac_common_plus']
+            pv = '%.4f' % results['pv']
             j = results['short_judgement']
-            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, j]) + "\n")
+            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, fmp, pv, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder,
