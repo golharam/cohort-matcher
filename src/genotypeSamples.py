@@ -49,15 +49,19 @@ def main(argv):
     batch = boto3.client('batch')
 
     samples = read_samples(args.bamsheet)
+    logging.info("Read %d samples from %s", len(samples), args.bamsheet)
 
     vcf_files = listFiles(args.s3_cache_folder, suffix='.vcf')
 
     genotyping_jobs = []
-    for sample in samples:
+    for idx, sample in enumerate(samples):
         sample_id = sample['sample_id']
         vcf_file = "%s/%s.vcf" % (args.s3_cache_folder, sample_id)
+        if vcf_file in vcf_files:
+            logging.info("[%d/%d] Skipping %s, VCF file already exists: %s", idx+1, len(samples), sample_id, vcf_file)
+            continue
         if vcf_file not in vcf_files:
-            logging.info("Genotyping %s", sample_id)
+            logging.info("[%d/%d] Genotyping %s", idx+1, len(samples), sample_id)
             if sample['reference'] == 'hg19':
                 s3_reference_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2"
                 s3_targets_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed"
