@@ -91,6 +91,8 @@ def main(argv):
                        "-s", sample['sample_id'],
                        "--s3_cache_folder", args.s3_cache_folder,
                        "--working_dir", args.working_dir]
+                if args.consider_alleles:
+                    cmd.append("--consider_alleles")
                 if args.dry_run:
                     logging.info(cmd)
                 else:
@@ -100,14 +102,17 @@ def main(argv):
                     logging.info("Would call batch.submit_job: compareGenotypes.py -s %s "
                                  "--s3_cache_folder %s", sample['sample_id'], args.s3_cache_folder)
                 else:
+                    cmd = ['/compareGenotypes.py',
+                            '-s', sample['sample_id'],
+                            '--s3_cache_folder',
+                            args.s3_cache_folder]
+                    if args.consider_alleles:
+                        cmd.append("--consider_alleles")
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample['sample_id'],
                                                 jobQueue=args.job_queue,
                                                 jobDefinition=args.job_definition,
                                                 containerOverrides={'vcpus': 1,
-                                                                    'command': ['/compareGenotypes.py',
-                                                                                '-s', sample['sample_id'],
-                                                                                '--s3_cache_folder',
-                                                                                args.s3_cache_folder]})
+                                                                    'command': cmd})
                     jobId = response['jobId']
                     jobs.append(jobId)
                 logging.debug(response)
@@ -151,8 +156,10 @@ def parseArguments(argv):
     required_args.add_argument("-CD", "--s3_cache_folder", required=True,
                                help="Specify S3 path for cached VCF/TSV files")
 
-    job_args = parser.add_argument_group("Optional")
-    job_args.add_argument('-f', '--force', action="store_true", default=False,
+    optional_args = parser.add_argument_group("Optional")
+    optional_args.add_argument('--consider-alleles', action="store_true", default=False, 
+                               help="Consider allele-specific expression")
+    optional_args.add_argument('-f', '--force', action="store_true", default=False,
                           help="Force re-run")
 
 

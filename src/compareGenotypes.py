@@ -39,7 +39,7 @@ def is_subset(hom_gt, het_gt):
     gt_hom = hom_gt.split("/")[0]
     return gt_hom in het_gt
 
-def compareGenotypes(var_list, var_list2, intersection):
+def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
     ''' Compare genotypes of two samples '''
     ct_common = 0           # of common genotypes
     comm_hom_ct = 0         # of common homozygote genotypes
@@ -132,10 +132,11 @@ def compareGenotypes(var_list, var_list2, intersection):
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
-                                                                     allele_subset)
+                                                                     allele_subset,
+                                                                     consider_alleles)
     return results
 
-def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
+def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset, consider_alleles):
     ''' Make judgement of sample similarity based on genotype comparison '''
     A_BIT_LOW = """ the number of comparable genomic loci is a bit low. Try using a
                     different variants list (--VCF) file which have more appropriate
@@ -146,17 +147,18 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
         short_judgement = "INCONCLUSIVE"
     elif total_compared <= 100:
         # allow for 0.90 frac_common for low loci count
-        if frac_common >= 0.9 or frac_common_plus >= 0.9:
+        if frac_common >= 0.9 or (consider_alleles and frac_common_plus >= 0.9):
             judgement = "LIKELY SAME SOURCE: %s" % A_BIT_LOW
             short_judgement = "LIKELY SAME"
-            # if there is possible allele-specific genotype subset
-            if allele_subset == "1sub2" or allele_subset == "2sub1":
-                sub_ = allele_subset.split("sub")[0]
-                over_ = allele_subset.split("sub")[1]
-                judgement += """ BAM%s genotype appears to be a subset of BAM%s.
-                                 Possibly BAM%s is RNA-seq data or BAM%s is 
-                                 ontaminated.""" % (sub_, over_, sub_, over_)
-                short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
+            if consider_alleles:
+                # if there is possible allele-specific genotype subset
+                if allele_subset == "1sub2" or allele_subset == "2sub1":
+                    sub_ = allele_subset.split("sub")[0]
+                    over_ = allele_subset.split("sub")[1]
+                    judgement += """ BAM%s genotype appears to be a subset of BAM%s.
+                                     Possibly BAM%s is RNA-seq data or BAM%s is 
+                                     ontaminated.""" % (sub_, over_, sub_, over_)
+                    short_judgement += ". (BAM%s is subset of BAM%s)" % (sub_, over_)
         elif frac_common <= 0.6:
             judgement = "LIKELY FROM DIFFERENT SOURCES: %s" % A_BIT_LOW
             short_judgement = "LIKELY DIFFERENT"
@@ -168,7 +170,7 @@ def makeJudgement(total_compared, frac_common, frac_common_plus, allele_subset):
         if frac_common >= 0.95:
             judgement = "BAM FILES ARE FROM THE SAME SOURCE"
             short_judgement = "SAME"
-        elif frac_common_plus >= 0.95:
+        elif consider_alleles and frac_common_plus >= 0.95:
             judgement = "BAM FILES ARE VERY LIKELY FROM THE SAME SOURCE"
             short_judgement = "LIKELY SAME"
             if allele_subset == "1sub2" or allele_subset == "2sub1":
@@ -267,7 +269,7 @@ def main(argv):
 
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
-            results = compareGenotypes(var_list, var_list2, intersection)
+            results = compareGenotypes(var_list, var_list2, intersection, args.consider_alleles)
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             tc = '%d' % results['total_compared']
@@ -296,6 +298,10 @@ def parseArguments(argv):
     required_args.add_argument('-s', '--sample', required=True, help="Sample of interest")
     required_args.add_argument("--s3_cache_folder", "-CD", required=True,
                                help="Specify S3 path for cached VCF/TSV files")
+
+    optional_args = parser.add_argument_group("Optional")
+    optional_args.add_argument('--consider-alleles', action="store_true", default=False, 
+                               help="Consider allele-specific expression")
 
     parser.add_argument('--working_dir', type=str, default='/scratch')
     parser.add_argument("-t", "--dp_threshold", default=15, help="Depth of Coverage Threshold")
