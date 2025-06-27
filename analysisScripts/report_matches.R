@@ -52,12 +52,18 @@ get_sample_matches <- function(sample_id, cm) {
     matches <- rbind(matches1, matches2)
 
     # Select rows where the Judgement column contains "SAME"
-    get_sample_matches <- matches[grepl("SAME", matches$Judgement), ]
+    get_sample_matches <- matches[grepl("SAME|INCONCLUSIVE", matches$Judgement, ignore.case = TRUE), ]
 }
 
+
 outfile <- "report.txt"
+if (file.exists(outfile)) {
+  file.remove(outfile)
+}
 for (sample_id in samples$Sample_ID) {
     matches <- get_sample_matches(sample_id, cm)
-    write.table(matches, file = outfile, sep = "\t", append = TRUE, quote = FALSE, row.names = FALSE)
-    cat("\n", file = outfile, append = TRUE)
+    if (length(matches) > 0) {
+        write.table(matches, file = outfile, sep = "\t", append = TRUE, quote = FALSE, row.names = FALSE)
+        cat("\n", file = outfile, append = TRUE)
+    }
 }
