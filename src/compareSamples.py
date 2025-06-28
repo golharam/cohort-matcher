@@ -39,8 +39,8 @@ def _run(cmd):
     out, err = p.communicate()
     p.wait()
     if p.returncode != 0:
-        return err
-    return out
+        return p.returncode, err
+    return p.returncode, out
 
 def main(argv):
     ''' Main Entry Point '''
@@ -96,7 +96,10 @@ def main(argv):
                 if args.dry_run:
                     logging.info(cmd)
                 else:
-                    response = _run(cmd)
+                    ret_code, response = _run(cmd)
+                    if ret_code != 0:
+                        logging.error(response)
+                        return -1
             else:
                 if args.dry_run:
                     logging.info("Would call batch.submit_job: compareGenotypes.py -s %s "
