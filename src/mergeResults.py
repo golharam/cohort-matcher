@@ -48,7 +48,7 @@ def main(argv):
     meltedResultsFile = "meltedResults.txt"
     with open(meltedResultsFile, 'w') as outfile:
         # Write the header
-        outfile.write('\t'.join(['Subject1', 'Sample1', 'Subject2', 'Sample2', 'n_S1', 'n_S2', 'SNPs_Compared', 'Fraction_Match', 'Fraction_Match_Plus', 'PV', 'Judgement', 'Swap']) + "\n")
+        outfile.write('\t'.join(['Subject1', 'Sample1', 'Subject2', 'Sample2', 'n_S1', 'n_S2', 'SNPs_Compared', 'Fraction_Match', 'Binomial_PV', 'Fraction_Match_Plus', 'PV', 'Judgement', 'Swap']) + "\n")
         
         for i, fname in enumerate(localMeltedResultsFiles):
             logging.info("[%d/%d] Merging %s -> %s", i+1, len(localMeltedResultsFiles), fname, meltedResultsFile)
@@ -56,11 +56,11 @@ def main(argv):
                 # Skip the header line
                 next(infile)
                 for line in infile:
-                    sample1, sample2, n_s1, n_s2, snps_compared, fraction_match, fraction_match_plus, pv, judgement = line.strip().split('\t')
+                    sample1, sample2, n_s1, n_s2, snps_compared, fraction_match, binomial_pv, fraction_match_plus, pv, judgement = line.strip().split('\t')
                     subject1 = sample_to_subject[sample1]
                     subject2 = sample_to_subject[sample2]
                     swap = 'x' if subject1 != subject2 and 'SAME' in judgement else ''
-                    outfile.write('\t'.join([subject1, sample1, subject2, sample2, n_s1, n_s2, snps_compared, fraction_match, fraction_match_plus, pv, judgement, swap]) + "\n")
+                    outfile.write('\t'.join([subject1, sample1, subject2, sample2, n_s1, n_s2, snps_compared, fraction_match, binomial_pv, fraction_match_plus, pv, judgement, swap]) + "\n")
 
     s3_path = "%s/meltedResults.txt" % args.s3_cache_folder
     logging.info("Uploading %s -> %s", meltedResultsFile, s3_path)

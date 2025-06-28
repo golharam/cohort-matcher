@@ -12,6 +12,8 @@ import csv
 from fisher import pvalue
 import vcf
 
+from scipy.stats import binomtest
+
 from genotypeSamples import read_samples
 
 from common import downloadFile, uploadFile, generate_working_dir, delete_working_dir
@@ -92,10 +94,15 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
     total_compared = ct_common + ct_diff    # Total genotypes compared
     frac_common = 0                         # Fraction in common
     frac_common_plus = 0                    # Fraction in common including max subset
+    binomial_pv = '.'
     if total_compared > 0:
         frac_common = float(ct_common)/total_compared
         frac_common_plus = float(ct_common + max(diff_2sub1_ct,
                                                  diff_1sub2_ct))/total_compared
+        # Binomial Test for Identity
+        binomial_pv = binomtest(ct_common, total_compared, 0.5, alternative='greater').pvalue
+
+    # Likelihood Ratio Test
 
     # test of allele-specific genotype subsets
     allele_subset = ""
@@ -113,22 +120,27 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
                 allele_subset = "1sub2"
                 frac_common_plus = float(ct_common + diff_1sub2_ct) / total_compared
 
-    results = {}
-    results['total_compared'] = total_compared
-    results['ct_common'] = ct_common
-    results['frac_common'] = frac_common
-    results['frac_common_plus'] = frac_common_plus
-    results['pv'] = pv_
-    results['comm_hom_ct'] = comm_hom_ct
-    results['comm_het_ct'] = comm_het_ct
-    results['ct_diff'] = ct_diff
-    results['diff_hom_ct'] = diff_hom_ct
-    results['diff_het_ct'] = diff_het_ct
-    results['diff_hom_het_ct'] = diff_hom_het_ct
-    results['diff_het_hom_ct'] = diff_het_hom_ct
-    results['diff_1sub2_ct'] = diff_1sub2_ct
-    results['diff_2sub1_ct'] = diff_2sub1_ct
-    results['allele_subset'] = allele_subset
+    results = {
+        'total_compared': total_compared,
+        'ct_common': ct_common,
+        'frac_common': frac_common,
+        'binomial_pv': binomial_pv,
+        'frac_common_plus': frac_common_plus,
+        'pv': pv_,
+        'comm_hom_ct': comm_hom_ct,
+        'comm_het_ct': comm_het_ct,
+        'ct_diff': ct_diff,
+        'diff_hom_ct': diff_hom_ct,
+        'diff_het_ct': diff_het_ct,
+        'diff_hom_het_ct': diff_hom_het_ct,
+        'diff_het_hom_ct': diff_het_hom_ct,
+        'diff_1sub2_ct': diff_1sub2_ct,
+        'diff_2sub1_ct': diff_2sub1_ct,
+        'allele_subset': allele_subset,
+        'judgement': "",
+        'short_judgement': "",
+    }
+
     results['judgement'], results['short_judgement'] = makeJudgement(total_compared,
                                                                      frac_common,
                                                                      frac_common_plus,
@@ -248,7 +260,7 @@ def main(argv):
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sample_name)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tFraction_Match_Plus\tPV\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tBinomial_PV\tFraction_Match_Plus\tPV\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -274,10 +286,11 @@ def main(argv):
             n2 = '%d' % len(var_list2)
             tc = '%d' % results['total_compared']
             fm = '%.4f' % results['frac_common']
+            binomial_pv = '%.4f' % results['binomial_pv'] if results['binomial_pv'] != '.' else '.'
             fmp = '%.4f' % results['frac_common_plus']
             pv = '%.4f' % results['pv']
             j = results['short_judgement']
-            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, fmp, pv, j]) + "\n")
+            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, binomial_pv, fmp, pv, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder,

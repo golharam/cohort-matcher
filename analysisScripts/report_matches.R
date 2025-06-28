@@ -24,7 +24,7 @@ get_sample_matches <- function(sample_id, cm) {
     # Get all the rows where the sample is Sample2
     matches2 <- cm[cm$Sample2 == sample_id, ]
     # Swap Sample2 and Sample1 
-    colnames(matches2) <- c("Subject2", "Sample2", "Subject1", "Sample1", "n_S2", "n_S1", "SNPs_Compared", "Fraction_Match", "Fraction_Match_Plus", "PV", "Judgement", "Swap")
+    colnames(matches2) <- c("Subject2", "Sample2", "Subject1", "Sample1", "n_S2", "n_S1", "SNPs_Compared", "Fraction_Match", "Binomial_PV", "Fraction_Match_Plus", "PV", "Judgement", "Swap")
 
     # Fix the subset string
     # Step 1: Temporarily replace first string with a placeholder
