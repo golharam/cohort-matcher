@@ -56,7 +56,7 @@ get_sample_matches <- function(sample_id, cm) {
 }
 
 
-outfile <- "report.txt"
+outfile <- "matches_per_sample.tsv"
 if (file.exists(outfile)) {
   file.remove(outfile)
 }
