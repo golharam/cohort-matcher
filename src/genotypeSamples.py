@@ -51,7 +51,10 @@ def main(argv):
     samples = read_samples(args.bamsheet)
     logging.info("Read %d samples from %s", len(samples), args.bamsheet)
 
-    vcf_files = listFiles(args.s3_cache_folder, suffix='.vcf')
+    if args.force:
+        vcf_files = []
+    else:
+        vcf_files = listFiles(args.s3_cache_folder, suffix='.vcf')
 
     genotyping_jobs = []
     for idx, sample in enumerate(samples):
@@ -62,7 +65,10 @@ def main(argv):
             continue
         if vcf_file not in vcf_files:
             logging.info("[%d/%d] Genotyping %s", idx+1, len(samples), sample_id)
-            if sample['reference'] == 'hg19':
+            if args.s3_reference_path and args.s3_targets_path:
+                s3_reference_path = args.s3_reference_path
+                s3_targets_path = args.s3_targets_path
+            elif sample['reference'] == 'hg19':
                 s3_reference_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.tar.bz2"
                 s3_targets_path = "s3://bmsrd-ngs-repo/cohort-matcher/hg19.cohort-matcher.bed"
             elif sample['reference'] == 'GRCh37ERCC':
@@ -74,9 +80,6 @@ def main(argv):
             elif sample['reference'] == 'GRCh38ERCC':
                 s3_reference_path = "s3://bmsrd-ngs-repo/cohort-matcher/GRCh38ERCC.tar.bz2"
                 s3_targets_path = "s3://bmsrd-ngs-repo/NGSCheckMate/SNP_GRCh38_hg38_woChr.sorted.bed"
-            elif args.s3_reference_path and args.s3_targets_path:
-                s3_reference_path = args.s3_reference_path
-                s3_targets_path = args.s3_targets_path
             else:
                 logging.warning("Skipping %s due to unknown reference", sample_id)
                 continue
@@ -130,6 +133,8 @@ def parse_arguments(argv):
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument('-d', '--dryRun', default=False, action="store_true",
                         help="Simulate job submission")
+    parser.add_argument('-f', '--force', action="store_true", default=False,
+                          help="Force re-run")
 
     required_args = parser.add_argument_group("Required")
     required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
