@@ -23,6 +23,26 @@ p <- ggplot(cm, aes(x = Fraction_Match, fill = Judgement)) +
        theme_minimal()
 ggsave("fraction_match_histogram.png", plot = p, width = 6, height = 4, dpi = 300)
 
+# Generate a histogram of LRR scores by Judgement
+p <- ggplot(cm, aes(x = LRR, fill = Judgement)) +
+       geom_histogram(binwidth = 5, position = "identity", alpha = 0.6, color = "black") +
+       labs(title = "Histogram of LRR by Judgement",
+         x = "Log-Likelihood Ratio (LRR)", y = "Count") +
+       theme_minimal()
+ggsave("llr_by_judgement_histogram.png", plot = p, width = 6, height = 4, dpi = 300)
+
+# Generate a boxplot of LRR scores by Judgement
+p <- ggplot(cm, aes(x = Judgement, y = LRR, fill = Judgement)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "LRR Scores by Judgement",
+       x = "Judgement", y = "Log-Likelihood Ratio (LRR)") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+    legend.position = "none"
+  )
+ggsave("llr_by_judgement_boxplot.png", plot = p, width = 8, height = 6, dpi = 300)
 
 # Generate a plot of the callable SNPs per sample
 # Combine Sample1 and Sample2 into one vector with corresponding counts
@@ -48,3 +68,4 @@ write.table(unique_samples, "callable_snps_per_sample.txt", sep="\t", quote=FALS
 
 # Save plot with increased width
 ggsave("callable_snps_per_sample.png", plot = p, width = 16, height = 6, dpi = 300)
+
