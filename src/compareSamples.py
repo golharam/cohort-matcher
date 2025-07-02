@@ -90,6 +90,7 @@ def main(argv):
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
                        "-s", sample['sample_id'],
                        "--s3_cache_folder", args.s3_cache_folder,
+                       '--allele-freq', args.allele_freqs,
                        "--working_dir", args.working_dir]
                 if args.consider_alleles:
                     cmd.append("--consider_alleles")
@@ -108,7 +109,8 @@ def main(argv):
                     cmd = ['/compareGenotypes.py',
                             '-s', sample['sample_id'],
                             '--s3_cache_folder',
-                            args.s3_cache_folder]
+                            args.s3_cache_folder,
+                            '--allele-freq', args.allele_freqs]
                     if args.consider_alleles:
                         cmd.append("--consider_alleles")
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample['sample_id'],
@@ -153,18 +155,21 @@ def parseArguments(argv):
                         default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument('-d', '--dry-run', default=False, action="store_true",
                         help="Simulate job submission")
+    parser.add_argument('-f', '--force', action="store_true", default=False,
+                          help="Force re-run")
 
     required_args = parser.add_argument_group("Required")
     required_args.add_argument('-b', '--bamsheet', required=True, help="Bamsheet")
     required_args.add_argument("-CD", "--s3_cache_folder", required=True,
                                help="Specify S3 path for cached VCF/TSV files")
 
-    optional_args = parser.add_argument_group("Optional")
+    optional_args = parser.add_argument_group("Allele Specific Expression")
     optional_args.add_argument('--consider-alleles', action="store_true", default=False, 
                                help="Consider allele-specific expression")
-    optional_args.add_argument('-f', '--force', action="store_true", default=False,
-                          help="Force re-run")
 
+    optional_args = parser.add_argument_group("Log-Odds Ratio")
+    optional_args.add_argument('-af', '--allele-freqs', required=True, help="Path to allele frequencies TSV file")
+    optional_args.add_argument('--error-rate', type=float, default=0.01, help="Error rate for genotype comparison")
 
     job_args = parser.add_argument_group("AWS Batch Job Settings")
     job_args.add_argument('-q', "--job-queue", action="store", default="ngs-job-queue",

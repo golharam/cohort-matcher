@@ -11,8 +11,8 @@ import sys
 import csv
 from fisher import pvalue
 import vcf
-
 from scipy.stats import binomtest
+import math
 
 from genotypeSamples import read_samples
 
@@ -41,7 +41,7 @@ def is_subset(hom_gt, het_gt):
     gt_hom = hom_gt.split("/")[0]
     return gt_hom in het_gt
 
-def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
+def compareGenotypes(var_list, var_list2, intersection, allele_freqs, error_rate, consider_alleles):
     ''' Compare genotypes of two samples '''
     ct_common = 0           # of common genotypes
     comm_hom_ct = 0         # of common homozygote genotypes
@@ -55,6 +55,8 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
     diff_hom_het_ct = 0     # of genotypes where sample1 is hom and not a subset of sample2 genotype
     diff_2sub1_ct = 0
     diff_het_hom_ct = 0
+
+    total_llr = 0.0
 
     for pos_ in intersection:
         gt1 = var_list[pos_]['GT']
@@ -91,6 +93,46 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
                 print(gt1, gt2)
                 exit(1)
 
+        if pos_ in allele_freqs:
+            # q is alt allele freq, p is ref allele freq
+            q = allele_freqs[pos_]['AF']
+            p = 1 - q
+            
+            # gt1 contains a / in the middle.  remove it.
+            gt1 = gt1[0] + gt1[2]
+            gt2 = gt2[0] + gt2[2]
+            gt1 = ''.join(sorted(gt1))
+            gt2 = ''.join(sorted(gt2))
+            
+            # Recode to AA, AB, BB (assuming REF is allele1)
+            def recode(geno, ref, alt):
+                if geno == ref + ref:
+                    return "AA"
+                elif geno == ref + alt or geno == alt + ref:
+                    return "AB"
+                elif geno == alt + alt:
+                    return "BB"
+                return None
+
+            def genotype_prob(geno, p):
+                q = 1 - p
+                if geno == "AA":
+                    return p ** 2
+                elif geno == "AB":
+                    return 2 * p * q
+                elif geno == "BB":
+                    return q ** 2
+                return 0.0
+
+            geno_A = recode(gt1, allele_freqs[pos_]['REF'], allele_freqs[pos_]['ALT'])
+            geno_B = recode(gt2, allele_freqs[pos_]['REF'], allele_freqs[pos_]['ALT'])
+
+            L_same = 1 - error_rate if geno_A == geno_B else error_rate
+            L_diff = genotype_prob(geno_A, p) * genotype_prob(geno_B, p)
+            if L_diff == 0:
+                continue
+            total_llr += math.log10(L_same / L_diff)
+
     total_compared = ct_common + ct_diff    # Total genotypes compared
     frac_common = 0                         # Fraction in common
     frac_common_plus = 0                    # Fraction in common including max subset
@@ -101,8 +143,6 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
                                                  diff_1sub2_ct))/total_compared
         # Binomial Test for Identity
         binomial_pv = binomtest(ct_common, total_compared, 0.5, alternative='greater').pvalue
-
-    # Likelihood Ratio Test
 
     # test of allele-specific genotype subsets
     allele_subset = ""
@@ -125,6 +165,7 @@ def compareGenotypes(var_list, var_list2, intersection, consider_alleles):
         'ct_common': ct_common,
         'frac_common': frac_common,
         'binomial_pv': binomial_pv,
+        'total_llr': total_llr,
         'frac_common_plus': frac_common_plus,
         'pv': pv_,
         'comm_hom_ct': comm_hom_ct,
@@ -215,9 +256,21 @@ def getIntersectingVariants(var_list, var_list2):
             intersection.append(var_)
     return intersection
 
+def read_allele_freqs(allele_freqs_file, sep="\t"):
+    var_list = {}
+    with open(allele_freqs_file, "r") as fin:
+        for line in fin:
+            if line.startswith('CHROM'):
+                continue
+            chrom, pos, ref, alt, af = line.strip("\n").split("\t")
+            chrom_ = chrom.replace("chr", "")
+            var_list[f"{chrom_}\t{pos}"] = {
+                'REF': ref, 'ALT': alt, 'AF': float(af)}
+    return var_list
+
 def main(argv):
     ''' Main Entry Point '''
-    args = parseArguments(argv)
+    args = parse_arguments(argv)
     logging.basicConfig(level=args.log_level)
     logger.info("%s v%s", __appname__, __version__)
     logger.info(args)
@@ -240,6 +293,9 @@ def main(argv):
         logger.error("Unable to locate sample in bamsheet")
         return -1
 
+    # Load allele frequencies
+    allele_freqs = read_allele_freqs(args.allele_freqs)
+
     # Get the list of variants in the reference sample
     s3_vcf_file = "%s/%s.vcf" % (args.s3_cache_folder, sample_name)
     vcf_file = "%s/%s.vcf" % (working_dir, sample_name)
@@ -260,7 +316,7 @@ def main(argv):
 
     meltedResultsFile = "%s/%s.meltedResults.txt" % (working_dir, sample_name)
     with open(meltedResultsFile, "w") as fout:
-        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tBinomial_PV\tFraction_Match_Plus\tPV\tJudgement\n")
+        fout.write("Sample1\tSample2\tn_S1\tn_S2\tSNPs_Compared\tFraction_Match\tBinomial_PV\tLLR\tFraction_Match_Plus\tPV\tJudgement\n")
         sample_index += 1
         while sample_index < len(samples):
             sample = samples[sample_index]
@@ -281,16 +337,17 @@ def main(argv):
 
             # compare the genotypes
             intersection = getIntersectingVariants(var_list, var_list2)
-            results = compareGenotypes(var_list, var_list2, intersection, args.consider_alleles)
+            results = compareGenotypes(var_list, var_list2, intersection, allele_freqs, args.error_rate, args.consider_alleles)
             n1 = '%d' % len(var_list)
             n2 = '%d' % len(var_list2)
             tc = '%d' % results['total_compared']
             fm = '%.4f' % results['frac_common']
             binomial_pv = '%.4f' % results['binomial_pv'] if results['binomial_pv'] != '.' else '.'
+            llr = '%.4f' % results['total_llr']
             fmp = '%.4f' % results['frac_common_plus']
             pv = '%.4f' % results['pv']
             j = results['short_judgement']
-            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, binomial_pv, fmp, pv, j]) + "\n")
+            fout.write('\t'.join([sample_name, sample['sample_id'], n1, n2, tc, fm, binomial_pv, llr, fmp, pv, j]) + "\n")
             sample_index += 1
     logger.info("Uploading %s to %s", meltedResultsFile, args.s3_cache_folder)
     uploadFile(meltedResultsFile, "%s/%s" % (args.s3_cache_folder,
@@ -300,27 +357,6 @@ def main(argv):
     os.remove(meltedResultsFile)
     delete_working_dir(working_dir)
     logger.info('Completed')
-
-def parseArguments(argv):
-    ''' Parse arguments '''
-    parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
-    parser.add_argument('--log-level', help="Prints warnings to console by default",
-                        default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-
-    required_args = parser.add_argument_group("Required")
-    required_args.add_argument('-s', '--sample', required=True, help="Sample of interest")
-    required_args.add_argument("--s3_cache_folder", "-CD", required=True,
-                               help="Specify S3 path for cached VCF/TSV files")
-
-    optional_args = parser.add_argument_group("Optional")
-    optional_args.add_argument('--consider-alleles', action="store_true", default=False, 
-                               help="Consider allele-specific expression")
-
-    parser.add_argument('--working_dir', type=str, default='/scratch')
-    parser.add_argument("-t", "--dp_threshold", default=15, help="Depth of Coverage Threshold")
-
-    args = parser.parse_args(argv)
-    return args
 
 def get_tsv_variants(tsvFile, dp_threshold):
     ''' Return a list of variants that pass threshold '''
@@ -342,16 +378,19 @@ def get_tsv_variants(tsvFile, dp_threshold):
 def VCFtoTSV(invcf, outtsv, caller="freebayes"):
     '''
     Convert a VCF to TSV
+    
     '''
     logger.debug("%s -> %s", invcf, outtsv)
     fout = open(outtsv, "w")
-    vcf_in = vcf.Reader(open(invcf, "r"))
-    var_ct = 0
+
     if caller == "gatk" or caller == "varscan":
         fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AD", "GT"]
     elif caller == "freebayes":
         fields_to_extract = ["CHROM", "POS", "REF", "ALT", "QUAL", "DP", "AO", "GT"]
     fout.write("%s\n" % "\t".join(fields_to_extract))
+
+    vcf_in = vcf.Reader(open(invcf, "r"))
+    var_ct = 0
     try:
       for var in vcf_in:
         if var.is_indel:
@@ -423,6 +462,31 @@ def VCFtoTSV(invcf, outtsv, caller="freebayes"):
       os.remove(outtsv)
       logger.error("Could not convert %s -> %s", invcf, outtsv)
     return var_ct
+
+def parse_arguments(argv):
+    ''' Parse arguments '''
+    parser = argparse.ArgumentParser(description='Compare a sample to a set of samples')
+    parser.add_argument('--log-level', help="Prints warnings to console by default",
+                        default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+
+    required_args = parser.add_argument_group("Required")
+    required_args.add_argument('-s', '--sample', required=True, help="Sample of interest")
+    required_args.add_argument("--s3_cache_folder", "-CD", required=True,
+                               help="Specify S3 path for cached VCF/TSV files")
+
+    optional_args = parser.add_argument_group("Optional")
+    # Account for RNA allele expression
+    optional_args.add_argument('--consider-alleles', action="store_true", default=False, 
+                               help="Consider allele-specific expression")
+    # LRR
+    optional_args.add_argument('--allele-freqs', required=True, help="Path to allele frequencies TSV file")
+    optional_args.add_argument('--error-rate', type=float, default=0.01, help="Error rate for genotype comparison")
+
+    optional_args.add_argument('--working_dir', type=str, default='/scratch')
+    optional_args.add_argument("-t", "--dp_threshold", default=15, help="Depth of Coverage Threshold")
+
+    args = parser.parse_args(argv)
+    return args
 
 if __name__ == '__main__':
     main(sys.argv[1:])
