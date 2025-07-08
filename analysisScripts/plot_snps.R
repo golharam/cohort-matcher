@@ -69,3 +69,5 @@ write.table(unique_samples, "callable_snps_per_sample.txt", sep="\t", quote=FALS
 # Save plot with increased width
 ggsave("callable_snps_per_sample.png", plot = p, width = 16, height = 6, dpi = 300)
 
+# Plot a histogram of LRR scores
+
