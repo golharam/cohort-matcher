@@ -90,7 +90,7 @@ def main(argv):
                 cmd = ["%s/compareGenotypes.py" % os.path.dirname(__file__),
                        "-s", sample['sample_id'],
                        "--s3_cache_folder", args.s3_cache_folder,
-                       '--allele-freq', args.allele_freqs,
+                       '--allele-freqs', args.allele_freqs,
                        "--working_dir", args.working_dir]
                 if args.consider_alleles:
                     cmd.append("--consider_alleles")
@@ -110,7 +110,7 @@ def main(argv):
                             '-s', sample['sample_id'],
                             '--s3_cache_folder',
                             args.s3_cache_folder,
-                            '--allele-freq', args.allele_freqs]
+                            '--allele-freqs', args.allele_freqs]
                     if args.consider_alleles:
                         cmd.append("--consider_alleles")
                     response = batch.submit_job(jobName='compareGenotypes-%s' % sample['sample_id'],
